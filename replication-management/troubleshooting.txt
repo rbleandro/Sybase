@@ -1,0 +1,21 @@
+--to get the error that caused repliaction to stop
+sysadmin log_first_tran, CPDB1, lmscan
+sysadmin log_first_tran, CPDB1, cmf_data_lm
+sysadmin log_first_tran, CPDB4, canada_post
+
+-- to resume connection skipping the bad command
+resume connection to CPDB1.lmscan skip transaction
+resume connection to CPDB1.cmf_data_lm skip transaction
+resume connection to CPDB4.canada_post skip transaction
+
+-- to resume connection retrying the bad command
+resume connection to CPDB1.cmf_data_lm execute transaction
+resume connection to CPDB1.lmscan execute transaction
+
+rs_helppartition sq1
+rs_helppartition sq2
+rs_helppartition sq3
+rs_helppartition sq4
+rs_helppartition sq5
+rs_helppartition sq6
+rs_helppartition sq7

@@ -1,0 +1,14 @@
+--Partition segments:
+
+	connect to rssd
+	go
+	rs_helppartition sq3
+	go
+
+
+--and then disk space:
+
+	disconnect
+	go
+	admin disk_space
+	go

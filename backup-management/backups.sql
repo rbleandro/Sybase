@@ -1,0 +1,1 @@
+dump database master to 'D:\SAP\data\master-backup.bak'

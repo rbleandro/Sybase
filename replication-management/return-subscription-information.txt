@@ -1,0 +1,3 @@
+--execute while connected to rssd
+
+rs_helpdbsub

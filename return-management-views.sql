@@ -1,0 +1,1 @@
+SELECT USER_NAME(O.uid),O.name,O.id,CONVERT(bit,O.sysstat3 & 1),CONVERT(bit,O.sysstat3 & 2) FROM sysobjects O WHERE O.type  IN  ('U','S') ORDER BY USER_NAME(O.uid),O.name

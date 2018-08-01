@@ -1,0 +1,126 @@
+--Following steps are to resync or make sure all configs have been applied
+in Primary db (DBARTISAN):
+--==============
+use lmscan
+go
+sp_reptostandby lmscan,'all'
+go
+sp_setrepdbmode lmscan,uds,'off' --<-- Keeping it off
+go
+sp_config_rep_agent lmscan,disable
+go
+--====
+-- In Secondary db
+--===
+use lmscan
+go
+sp_reptostandby lmscan,'all'
+go
+sp_setrepdbmode lmscan,uds,'off' --<-- Keeping it off
+go
+sp_config_rep_agent lmscan,disable
+go
+
+--====
+--
+!!!!!!!!!!! NOW...Configure replication for both primary and secondary through rs_init
+--
+--====
+--====
+-- In PDB
+--====
+use lmscan
+go
+sp_stop_rep_agent lmscan
+go
+sp_config_rep_agent lmscan, send_warm_standby_xacts,true
+go
+--sp_config_rep_agent lmscan, 'ltl metadata reduction', 'true'
+go
+sp_start_rep_agent lmscan
+
+--====
+-- In RDB
+--====
+use lmscan
+go
+sp_stop_rep_agent lmscan
+go
+sp_config_rep_agent lmscan, send_warm_standby_xacts,true
+go
+--sp_config_rep_agent lmscan, 'ltl metadata reduction', 'true'
+go
+--sp_start_rep_agent lmscan --> DO NOT RESTART THE REPAGENT 
+
+--====
+In PRS:
+
+--=================
+alter connection to CPDB1.lmscan set dsi_compile_enable to 'on'
+alter connection to CPDB1.lmscan set dsi_replication_ddl to 'on'
+alter connection to CPDB1.lmscan set dsi_keep_triggers to 'off'
+alter connection to CPDB1.lmscan set dsi_compile_max_cmds to '100000'
+alter connection to CPDB1.lmscan set dist_sqt_max_cache_size to '509715200'
+alter connection to CPDB1.lmscan set dynamic_sql to 'off'
+alter connection to CPDB1.lmscan set dsi_row_count_validation to 'off'
+suspend connection to CPDB1.lmscan
+resume connection to CPDB1.lmscan
+
+alter connection to CPDB1.lmscan set dsi_compile_enable to 'on'
+alter connection to CPDB1.lmscan set dsi_replication_ddl to 'on'
+alter connection to CPDB1.lmscan set dsi_keep_triggers to 'off'
+alter connection to CPDB1.lmscan set dist_sqt_max_cache_size to '509715200'
+alter connection to CPDB1.lmscan set dsi_compile_max_cmds to '100000'
+alter connection to CPDB1.lmscan set dynamic_sql to 'off'
+alter connection to CPDB1.lmscan set dsi_row_count_validation to 'off'
+--alter connection to CPDB1.lmscan set dsi_command_convert to 'i2di,u2di'
+suspend connection to CPDB1.lmscan
+resume connection to CPDB1.lmscan
+--==================
+
+create database replication definition CPDB1_lmscan_dbrep
+with primary at CPDB1.lmscan
+replicate DDL
+replicate system procedures
+--replicate SQLDML --<--- Not using this for now
+
+
+define subscription CPDB2_lmscan_dbsub
+for database replication definition CPDB1_lmscan_dbrep
+with primary at CPDB1.lmscan
+with replicate at CPDB1.lmscan
+subscribe to truncate table
+use dump marker
+
+validate subscription CPDB2_lmscan_dbsub
+for database replication definition CPDB1_lmscan_dbrep
+with primary at CPDB1.lmscan
+with replicate at CPDB1.lmscan
+
+-- make sure that you disable repagent on the replicate, after the load
+in RDB
+use lmscan
+go
+dbcc settrunc(ltm,ignore)
+go
+select db_name(dbid),* from master..syslogshold
+
+--======================================================================
+-- if you need to drop sub
+drop subscription CPDB2_lmscan_dbsub
+for database replication definition CPDB1_lmscan_dbrep
+with primary at CPDB1.lmscan
+with replicate at CPDB1.lmscan
+without purge
+
+-- if you need to drop repdef
+drop database replication definition CPDB1_lmscan_dbrep
+with primary at CPDB1.lmscan
+
+
+
+--==============
+alter connection to  CPDB1.lmscan set dsi_command_convert to 'none'
+alter connection to  CPDB1.lmscan for replicate table named tttl_dc_delivery_comment set dsi_command_convert to 'i2di,u2di'
+suspend connection to CPDB1.lmscan
+resume connection to CPDB1.lmscan

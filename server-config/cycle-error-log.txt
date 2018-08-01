@@ -1,0 +1,6 @@
+cd /opt/sap/ASE-16_0/install
+sudo touch CPDB1.log
+sudo chown sybase:sybase CPDB1.log
+isql -Usa -w200
+sp_errorlog 'change log','./CPDB1.log', 'jslog false'
+go

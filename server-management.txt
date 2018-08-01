@@ -1,0 +1,11 @@
+--to start ASE 15 server 
+startserver –f RUN_olympus
+
+
+--to start ASE 16 server 
+startsrv –f RUN_olympus
+
+net start sybsql_olympus
+
+--shows the last boot time
+select @@boottime
