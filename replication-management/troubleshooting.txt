@@ -2,6 +2,7 @@
 sysadmin log_first_tran, CPDB1, lmscan
 sysadmin log_first_tran, CPDB1, cmf_data_lm
 sysadmin log_first_tran, CPDB4, canada_post
+sysadmin log_first_tran, CPDB1, canship_webdb
 
 -- to resume connection skipping the bad command
 resume connection to CPDB1.lmscan skip transaction
@@ -12,6 +13,8 @@ resume connection to CPDB4.canada_post skip transaction
 resume connection to CPDB1.cmf_data_lm execute transaction
 resume connection to CPDB1.lmscan execute transaction
 
+connect to rssd 
+go 
 rs_helppartition sq1
 rs_helppartition sq2
 rs_helppartition sq3
@@ -19,3 +22,10 @@ rs_helppartition sq4
 rs_helppartition sq5
 rs_helppartition sq6
 rs_helppartition sq7
+
+tail -n50 /opt/sybase/REP-15_5/install/hqvsybrep3.log -f
+
+isql -Usa -w0000000000000000000000000000000000000000000000000000000000000000999
+
+--to check the inbound and outbound queues for a database replication
+admin who,sqm, CPDB1, canship_webdb

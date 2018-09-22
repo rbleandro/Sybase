@@ -1,0 +1,47 @@
+sysadmin hibernate_on, hqvsybrep3
+
+--to check the inbound and outbound queues for a database replication
+admin who,sqm, CPDB1, canship_webdb
+sysadmin sqm_purge_queue, 194, 0
+
+sysadmin hibernate_off, hqvsybrep3
+
+--suspend connection to CPDB1.canship_webdb
+
+drop subscription CPDB2_canship_webdb_dbsub
+for database replication definition CPDB2_canship_webdb_dbrep
+with primary at CPDB2.canship_webdb
+with replicate at CPDB1.canship_webdb
+without purge
+
+define subscription CPDB2_canship_webdb_dbsub
+for database replication definition CPDB2_canship_webdb_dbrep
+with primary at CPDB2.canship_webdb
+with replicate at CPDB1.canship_webdb
+subscribe to truncate table
+use dump marker
+
+validate subscription CPDB2_canship_webdb_dbsub
+for database replication definition CPDB2_canship_webdb_dbrep
+with primary at CPDB2.canship_webdb
+with replicate at CPDB1.canship_webdb
+
+Step 3:
+ 
+Dump canship_webdb
+ 
+Step 4:
+ 
+Load canship_webdb on standby (CPDB1)
+ 
+Step 5 (ON Standby):
+ 
+use canship_webdb
+go
+sp_stop_rep_agent canship_webdb
+go
+sp_config_rep_agent canship_webdb, send_warm_standby_xacts,true
+go
+dbcc settrunc(ltm,ignore)
+go
+select db_name(dbid),* from master..syslogshold

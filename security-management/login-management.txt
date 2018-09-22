@@ -10,6 +10,12 @@ CREATE LOGIN webpool_dispatch
 	DEFAULT LANGUAGE us_english
 	EXEMPT INACTIVE LOCK TRUE
 go
+
+--to change a login's password
+exec sp_password 'canpar','Kenway@86','rafael_leandro'
+go
+
+
 use cpscan
 go
 exec sp_adduser N'webpool_terminal', N'webpool_terminal', N'public'

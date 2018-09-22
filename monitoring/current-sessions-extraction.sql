@@ -13,178 +13,98 @@ background >>> A process, such as a threshold procedure, run by Adaptive Server 
 log >>> suspend Processes suspended by reaching the last-chance threshold on the log. Immediate Kill.
 
 */
-go
-create or replace procedure sp_getRunningProcesses
-as
-begin
-    set nocount on
-    
-    DECLARE @OrderBy_Criteria VARCHAR(128)
-    --set @OrderBy_Criteria = 'Logical Reads'
-    SET @OrderBy_Criteria = 'cpu'
-    --SET @OrderBy_Criteria = 'cps'
-    --set @OrderBy_Criteria = 'execution_count'
-    --set @OrderBy_Criteria = 'duration'
-    --set @OrderBy_Criteria = 'Physical Reads'
-    
-    insert into tempdb1.dbo.dba_mon_processes
-    SELECT
-        spid,
-        'exec sp_showplan('+cast(spid as varchar(50))+')' 'ShowPlan'
-        ,CASE cmd 
-            WHEN 'NETWORK HANDLER' 
-            THEN NULL 
-            ELSE DB_NAME(dbid) 
-        END 'DB',
-        'kill ' + cast(spid as varchar(50)) 'KillCmd',
-        --fid ,
-        execution_time,
-        status,
-        SUSER_NAME(suid) 'username',
-        CASE clienthostname 
+
+DECLARE @OrderBy_Criteria VARCHAR(128),@clockrate int
+set @clockrate  = (select convert(int,cc.value2) from master.dbo.syscurconfigs cc inner join master.dbo.sysconfigures sc on cc.config=sc.config where sc.name='sql server clock tick length')
+--set @OrderBy_Criteria = 'b' --blocked
+SET @OrderBy_Criteria = 'cpu'
+--set @OrderBy_Criteria = 'd' --duration
+--set @OrderBy_Criteria = 'pr' - physical reads 
+
+SELECT
+	spid,
+	'kill ' + cast(spid as varchar(50)) 'KillCmd',
+	'exec sp_showplan('+cast(spid as varchar(50))+')' 'Plan'
+	,query_text(spid) as Query
+	,CASE cmd 
+		WHEN 'NETWORK HANDLER' 
+		THEN NULL 
+		ELSE DB_NAME(dbid) 
+	END 'Database',
+	execution_time,
+	status,
+	SUSER_NAME(suid) 'user',
+	case 
+	    CASE clienthostname 
             WHEN '' 
             THEN hostname 
             WHEN NULL 
             THEN hostname 
             ELSE clienthostname 
-        END 'host',
-        CASE clientapplname 
+	    END
+	WHEN NULL then 
+	    case ipaddr 
+	        when '10.4.96.82' then 'lmsdc1vaproc02' 
+	        when '10.3.1.223' then 'hqvmanproc1' 
+	        when '10.4.96.121' then 'lmsdc1vaproc01' 
+	        when '10.3.1.37' then 'hqvdstage1' 
+	        --when '10.133.32.97' then 'lmsdc1vaproc01'
+	        when '10.3.1.100' then 'cprhqvprtl03'
+	        when '10.3.1.107' then 'cprhqvprtlstg'
+	        when '10.3.1.167' then 'hqvcsw01'
+	        when '10.4.96.108' then 'lmsws1'
+	        when '10.4.96.43' then 'hqvlmsecomm1'
+	        when '10.4.96.103' then 'lmscrystrpt1'
+	        
+	    end 
+	    else CASE clienthostname 
             WHEN '' 
-            THEN program_name 
+            THEN hostname 
             WHEN NULL 
-            THEN program_name 
-            ELSE clientapplname 
-        END 'program',
-        memusage,
-        cpu,
-        physical_io,
-        blocked 'BlkPID',
-        cmd,
-        --tran_name 'Transaction',
-        time_blocked 'BlkTime',
-        network_pktsz 'NetPackSize',
-        --block_xloid 'Lock Owner Id',
-        ipaddr 'IPAddr',
-        loggedindatetime 'LastLogin' ,
-        getdate() as 'snapTime'
-    
-    --into tempdb1.dbo.dba_mon_processes	
-    FROM
-        master.dbo.sysprocesses 
-    where 1=1
-    
-    --and hostname = host_name()
-    --and hostname = 'HQVDSTAGE1'
-    and DB_NAME(dbid) not in ('master','sybmgmtdb')
-    and DB_NAME(dbid) not like 'tempdb%'
-    and status not in ('background')
-    and cmd not in ('HK WASH','HK GC','HK CHORES','NETWORK HANDLER')
-    and status <> 'recv sleep'
-    and spid <> @@spid and spid > 15
-    --and cmd = 'LOAD DATABASE'
-    --and spid=3841
-    ORDER BY CASE @OrderBy_Criteria
-                        WHEN 'Physical Reads' THEN physical_io
-                        WHEN 'cpu' THEN cpu
-                        WHEN 'Duration' THEN execution_time
-                        WHEN 'Blocks' THEN time_blocked
-                    END desc
-end                    
-go		
-exec sp_getRunningProcesses
-go
---select top 10 * from master.dbo.sysprocesses where spid>14	and status <> 'recv sleep'	 and DB_NAME(dbid)  in ('master','sybmgmtdb')
---go
-select spid,ShowPlan,DB,KillCmd,execution_time,status,username,host,program,memusage,cpu*100000/1000 as CPU,physical_io,BlkPID,cmd,BlkTime,NetPackSize,IPAddr,LastLogin,snapTime 
- from tempdb1.dbo.dba_mon_processes where snapTime >= '6/12/2018 6:15:01 AM' 
-and cmd not in ('AWAITING COMMAND') 
---and spid not in (4745,839,3315)
-order by snapTime desc--,execution_time desc
-go
-select spid,ShowPlan,DB,KillCmd,execution_time,status,username,host,program,memusage,cpu*100000/1000 as CPU,physical_io,BlkPID,cmd,BlkTime,NetPackSize,IPAddr,LastLogin,snapTime 
- from tempdb1.dbo.dba_mon_processes where snapTime >= '6/12/2018 6:00:02 AM' and snapTime < '6/12/2018 6:00:03 AM' 
---and spid not in (select spid from tempdb1.dbo.dba_mon_processes where snapTime >= '6/12/2018 6:15:01 AM' and snapTime < '6/12/2018 6:15:02 AM') 
-and cmd not in ('AWAITING COMMAND') 
-and spid not in (1507)
-order by execution_time desc
-go
-select spid,ShowPlan,DB,KillCmd,execution_time,status,username,host,program,memusage,cpu*(select convert(int,value2) from master.dbo.syscurconfigs where config=176)/1000 as CPU,physical_io,BlkPID,cmd,BlkTime,NetPackSize,IPAddr,LastLogin,snapTime 
-from tempdb1.dbo.dba_mon_processes where snapTime >= '6/12/2018 3:00:00 AM' and snapTime < '6/12/2018 3:15:03 AM' 
-and spid not in (select spid from tempdb1.dbo.dba_mon_processes where snapTime >= '6/12/2018 2:40:00 AM' and snapTime < '6/12/2018 3:00:00 AM') 
-and cmd not in ('AWAITING COMMAND') 
---and spid not in (1507)
-order by LastLogin 
-go
-select spid,ShowPlan,DB,KillCmd,execution_time,status,username,host,program,memusage,cpu*(select convert(int,value2) from master.dbo.syscurconfigs where config=176)/1000 as CPU,physical_io,BlkPID,cmd,BlkTime,NetPackSize,IPAddr,LastLogin,snapTime 
-from tempdb1.dbo.dba_mon_processes where snapTime >= '6/14/2018 3:00:00 AM' and snapTime < '6/14/2018 3:10:03 AM' 
-and spid not in (select spid from tempdb1.dbo.dba_mon_processes where snapTime >= '6/14/2018 2:56:00 AM' and snapTime < '6/14/2018 3:00:00 AM') 
---and cmd not in ('AWAITING COMMAND') 
---and spid not in (1507)
-order by LastLogin 
-go
-select spid,ShowPlan,DB,KillCmd,execution_time,status,username,host,program,memusage,cpu*(select convert(int,value2) from master.dbo.syscurconfigs where config=176)/1000 as CPU,physical_io,BlkPID,cmd,BlkTime,NetPackSize,IPAddr,LastLogin,snapTime 
- from tempdb1.dbo.dba_mon_processes where snapTime >= '6/12/2018 6:00:02 AM' and snapTime < '6/12/2018 6:00:03 AM' 
-and spid not in (select spid from tempdb1.dbo.dba_mon_processes where snapTime >= '6/12/2018 6:15:01 AM' /*and snapTime < '6/12/2018 6:15:02 AM'*/) 
-and cmd not in ('AWAITING COMMAND') 
-and spid not in (1507)
-order by execution_time desc
-go
+            THEN hostname 
+            ELSE clienthostname 
+	    END
+	end 'host',
 
-select spid,ShowPlan,DB,KillCmd,execution_time,status,username,host,program,memusage,cpu*(select convert(int,value2) from master.dbo.syscurconfigs where config=176)/1000 as CPU,physical_io,BlkPID,cmd,BlkTime,NetPackSize,IPAddr,LastLogin,snapTime 
- from tempdb1.dbo.dba_mon_processes where host in ('CPDB2','AUTOMAN03') and username in ('rhload','sybase','sa') and program in ('isql','gentor.exe') order by snapTime
-go
-
-select spid,ShowPlan,DB,KillCmd,execution_time,status,username,host,program,memusage,cpu*(select convert(int,value2) from master.dbo.syscurconfigs where config=176)/1000 as CPU,physical_io,BlkPID,cmd,BlkTime,NetPackSize,IPAddr,LastLogin,snapTime 
-from tempdb1.dbo.dba_mon_processes
+	CASE clientapplname 
+		WHEN '' 
+		THEN program_name 
+		WHEN NULL 
+		THEN program_name 
+		ELSE clientapplname 
+	END 'program',
+	memusage,
+	cpu*@clockrate/1000 as 'CPU(ms)',
+	physical_io,
+	blocked 'Blocked spid',
+	case blocked when 0 then '0' else query_text(blocked) end as BlockingQuery,
+	cmd,
+	tran_name 'Transaction',
+	time_blocked 'Time Blocked',
+	network_pktsz 'Network Packet Size',
+	block_xloid 'Lock Owner Id',
+	ipaddr 'IP address',
+	loggedindatetime 'Last Login' 
+	--,show_plan(spid,-1, -1, -1,-1)
+FROM
+	master.dbo.sysprocesses 
 where 1=1
-and snapTime >= '6/14/2018 5:54:00 AM' --and snapTime < '6/14/2018 5:54:03 AM' 
-and program = 'CMF_INHERITANCE.exe'
-order by snapTime
-go
-select snapTime,count(spid)
-from tempdb1.dbo.dba_mon_processes
-where 1=1
-and snapTime >= '6/14/2018 3:00:00 AM' --and snapTime < '6/14/2018 5:54:03 AM' 
-and program = 'CMF_INHERITANCE.exe'
-group by snapTime
-order by snapTime
-go
-select snapTime,program,count(spid) SessionCount,sum(cpu*(select convert(int,value2) from master.dbo.syscurconfigs where config=176)/1000) cpuTotal,min(LastLogin) LoginTime
-from tempdb1.dbo.dba_mon_processes
-where 1=1
-and snapTime >= '6/14/2018 3:00:00 AM' --and snapTime < '6/14/2018 5:54:03 AM' 
---and program = 'CMF_INHERITANCE.exe'
-group by snapTime,program
-order by snapTime,program
-go
-select s.SPID, s.CpuTime, t.LineNumber, t.SQLText
-from master..monProcessStatement s, master..monProcessSQLText t
-where s.SPID = t.SPID
-order by s.CpuTime DESC
-go
+--and hostname = host_name()
+and DB_NAME(dbid) not in  ('tempdb3')
+and status not in ('background')
+and cmd not in ('HK WASH','HK GC','HK CHORES','NETWORK HANDLER','MEMORY TUNE','DEADLOCK TUNE','SHUTDOWN HANDLER','KPP HANDLER','ASTC HANDLER','CHECKPOINT SLEEP','PORT MANAGER','AUDIT PROCESS','CHKPOINT WRKR','LICENSE HEARTBEAT','JOB SCHEDULER')
+and status <> 'recv sleep'
+and spid <> @@spid 
+--and cmd = 'LOAD DATABASE'
+--and spid=3841
+--and SUSER_NAME(suid) = 'lm_data_loader'
+--and blocked <> 0
+--and program_name='uvsh'
+ORDER BY CASE @OrderBy_Criteria
+        WHEN 'pr' THEN physical_io
+        WHEN 'cpu' THEN cpu
+        WHEN 'd' THEN execution_time
+        WHEN 'b' THEN time_blocked
+END desc
+go				
 
-select spid,ShowPlan,DB,KillCmd,execution_time,status,username,host,program,memusage,cpu*(select convert(int,value2) from master.dbo.syscurconfigs where config=176)/1000 as CPU,physical_io,BlkPID,cmd,BlkTime,NetPackSize,IPAddr,LastLogin,snapTime 
-from tempdb1.dbo.dba_mon_processes
-where 1=1
---and spid = 2868 
---and username ='rhload' 
-and host='CPDB2' and program='isql' and snapTime >= '6/14/2018 3:00:00 AM'
-order by snapTime
-go
-
-use svp_cp
-go
-
-select top 30 * from svp_proc_source_failure_log order by inserted_on desc
-go
-
-select top 30 * from svp_proc_source_failure_log order by start_time desc
-go
-
-select top 50 * from svp_status_run 
-where convert(time,start_date) >= '02:00:00' and convert(time,start_date) <= '07:00:00'
-order by inserted_on desc
-go
-
-select top 30 * from svp_proc_parcelwork_log order by start_time desc
-go
