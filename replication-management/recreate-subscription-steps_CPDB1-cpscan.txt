@@ -1,0 +1,53 @@
+--to check the inbound and outbound queues for a database replication
+admin who,sqm, CPDB1, cpscan
+--admin who,sqm, CPDB1, cpscan
+--admin who,sqm, CPIQ, cpscan_iq_conn1
+
+sysadmin hibernate_on, hqvsybrep3
+sysadmin sqm_purge_queue, 230, 0
+sysadmin hibernate_off, hqvsybrep3
+
+suspend connection to CPDB1.cpscan
+
+drop subscription CPDB2_cpscan_dbsub
+for database replication definition CPDB2_cpscan_dbrep
+with primary at CPDB2.cpscan
+with replicate at CPDB1.cpscan
+without purge
+
+resume connection to CPDB1.cpscan
+
+define subscription CPDB2_cpscan_dbsub
+for database replication definition CPDB2_cpscan_dbrep
+with primary at CPDB2.cpscan
+with replicate at CPDB1.cpscan
+subscribe to truncate table
+use dump marker
+
+validate subscription CPDB2_cpscan_dbsub
+for database replication definition CPDB2_cpscan_dbrep
+with primary at CPDB2.cpscan
+with replicate at CPDB1.cpscan
+
+Step 3:
+ 
+--dump database cpscan to '/home/sybase/db_backups/cpscan.dmp' compression=100
+--scp /home/sybase/db_backups/cpscan.dmp sybase@CPDB1:~/db_backups/
+ 
+Step 4:
+ 
+--load database cpscan from '/home/sybase/db_backups/cpscan.dmp'
+--load database cpscan from '/opt/sap/db_backups/cpscan.dmp'
+--online database cpscan
+ 
+Step 5 (ON Standby):
+ 
+use cpscan
+go
+sp_stop_rep_agent cpscan
+go
+sp_config_rep_agent cpscan, send_warm_standby_xacts,true
+go
+dbcc settrunc(ltm,ignore)
+go
+select db_name(dbid),* from master..syslogshold

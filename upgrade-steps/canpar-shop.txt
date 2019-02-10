@@ -1,0 +1,35 @@
+this procedure is for minor patches only!!!
+
+• ensure you have fresh database backups of all databases
+• if possible, run dbcc checkalloc on all databases before the upgrade
+• make sure the standby server has the most recent data (for replication and HA setups). For that, set the databases as read-only, dump and load the databases that are not replicated and set them back as read-write after the restart
+• backup and disable cron jobs on IQ, Production and RepServer and dataStage jobs
+	• to backup cron jobs  crontab -l > crontab_backup.txt
+	• to backup data stage jobs run the script C:\loomis_ftp_scripts\mail_scheduled_tasks.ps1 on hqvdstage1
+
+
+extract data from the compressed file with: tar -zxvf ASESERV160003P_6-20012052.TGZ
+
+stop Backup Server: issue a "shutdown SYB_BACKUP" within isql
+stop ASE: issue a "shutdown" within isql
+stop XP Server if necessary
+stop SCC  if present
+stop Cockpit if present
+stop repserver if present
+
+cd /home/sybase/db_backups/ebf28334
+./setup.bin
+
+Before running updatease, start the servers using (wait for recovery to complete for all databases): 
+cd /opt/sap/ASE-16_0/install
+startserver -f RUN_CPSYBTEST -f RUN_CPSYBTEST_BS
+
+Check if all databases are in read-write mode (the following query must return 0 rows): select master..sysdatabases where status & 1024 = 1024
+
+in case some database does not upgrade succesfully, correct the errors (see the upgrade log) and then run: /opt/sap/ASE-16_0/bin/updatease -D/opt/sap -SCPSYBTEST
+
+
+enable cron jobs and dataStage jobs
+to restore cron jobs from the backup file run "crontab -r" and then "crontab crontab_backup.txt". To confirm the restore check "crontab -l"
+reenable cron jobs on IQ, Production and RepServer and Data Stage jobs
+

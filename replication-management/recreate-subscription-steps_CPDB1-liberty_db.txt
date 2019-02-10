@@ -1,0 +1,55 @@
+--to check the inbound and outbound queues for a database replication
+admin who,sqm, CPDB1, liberty_db
+--admin who,sqm, CPDB1, liberty_db
+--admin who,sqm, CPIQ, liberty_db_iq_conn1
+
+sysadmin hibernate_on, hqvsybrep3
+sysadmin sqm_purge_queue, 230, 0
+sysadmin hibernate_off, hqvsybrep3
+
+suspend connection to CPDB1.liberty_db;
+
+drop subscription CPDB2_liberty_db_dbsub
+for database replication definition CPDB2_liberty_db_dbrep
+with primary at CPDB2.liberty_db
+with replicate at CPDB1.liberty_db
+without purge;
+
+resume connection to CPDB1.liberty_db;
+
+define subscription CPDB2_liberty_db_dbsub
+for database replication definition CPDB2_liberty_db_dbrep
+with primary at CPDB2.liberty_db
+with replicate at CPDB1.liberty_db
+subscribe to truncate table
+use dump marker;
+
+validate subscription CPDB2_liberty_db_dbsub
+for database replication definition CPDB2_liberty_db_dbrep
+with primary at CPDB2.liberty_db
+with replicate at CPDB1.liberty_db;
+
+resume connection to CPDB1.liberty_db;
+
+Step 3:
+ 
+--dump database liberty_db to '/home/sybase/db_backups/liberty_db.dmp' compression=100
+--scp /home/sybase/db_backups/liberty_db.dmp sybase@CPDB1:~/db_backups/
+ 
+Step 4:
+ 
+--load database liberty_db from '/home/sybase/db_backups/liberty_db.dmp'
+--load database liberty_db from '/opt/sap/db_backups/liberty_db.dmp'
+--online database liberty_db
+ 
+Step 5 (ON Standby):
+ 
+use liberty_db
+go
+sp_stop_rep_agent liberty_db
+go
+sp_config_rep_agent liberty_db, send_warm_standby_xacts,true
+go
+dbcc settrunc(ltm,ignore)
+go
+select db_name(dbid),* from master..syslogshold

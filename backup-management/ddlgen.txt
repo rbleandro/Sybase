@@ -1,0 +1,7 @@
+$SYBASE/$SYBASE_ASE/bin/ddlgen -Usa -P -SCPSYBTEST:4100 -TP -Ndbo.% -Dcmf_data -O/home/sybase/db_backups/procedures.sql
+$SYBASE/$SYBASE_ASE/bin/ddlgen -Usa -P -SCPSYBTEST:4100 -TU -Ndbo.% -Dcmf_data -O/home/sybase/db_backups/tables.sql
+$SYBASE/$SYBASE_ASE/bin/ddlgen -Usa -P -SCPSYBTEST:4100 -TV -Ndbo.% -Dcmf_data -O/home/sybase/db_backups/views.sql
+
+
+$SYBASE/$SYBASE_ASE/bin/ddlgen -Usa -P -SCPSYBTEST:4100 -TP -Ndbo.% -Dsvp_cp -O/home/sybase/db_backups/procedures_svpcp.sql
+$SYBASE/$SYBASE_ASE/bin/ddlgen -Usa -P -SCPSYBTEST:4100 -TP -Ndbo.% -Dsvp_lm -O/home/sybase/db_backups/procedures_svplm.sql

@@ -1,0 +1,55 @@
+--to check the inbound and outbound queues for a database replication
+admin who,sqm, CPDB1, rate_update
+--admin who,sqm, CPDB1, rate_update
+--admin who,sqm, CPIQ, rate_update_iq_conn1
+
+sysadmin hibernate_on, hqvsybrep3
+sysadmin sqm_purge_queue, 230, 0
+sysadmin hibernate_off, hqvsybrep3
+
+suspend connection to CPDB1.rate_update;
+
+drop subscription CPDB2_rate_update_dbsub
+for database replication definition CPDB2_rate_update_dbrep
+with primary at CPDB2.rate_update
+with replicate at CPDB1.rate_update
+without purge;
+
+resume connection to CPDB1.rate_update;
+
+define subscription CPDB2_rate_update_dbsub
+for database replication definition CPDB2_rate_update_dbrep
+with primary at CPDB2.rate_update
+with replicate at CPDB1.rate_update
+subscribe to truncate table
+use dump marker;
+
+validate subscription CPDB2_rate_update_dbsub
+for database replication definition CPDB2_rate_update_dbrep
+with primary at CPDB2.rate_update
+with replicate at CPDB1.rate_update;
+
+resume connection to CPDB1.rate_update;
+
+Step 3:
+ 
+--dump database rate_update to '/home/sybase/db_backups/rate_update.dmp' compression=100
+--scp /home/sybase/db_backups/rate_update.dmp sybase@CPDB1:~/db_backups/
+ 
+Step 4:
+ 
+--load database rate_update from '/home/sybase/db_backups/rate_update.dmp'
+--load database rate_update from '/opt/sap/db_backups/rate_update.dmp'
+--online database rate_update
+ 
+Step 5 (ON Standby):
+ 
+use rate_update
+go
+sp_stop_rep_agent rate_update
+go
+sp_config_rep_agent rate_update, send_warm_standby_xacts,true
+go
+dbcc settrunc(ltm,ignore)
+go
+select db_name(dbid),* from master..syslogshold

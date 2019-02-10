@@ -3,25 +3,47 @@ sysadmin log_first_tran, CPDB1, lmscan
 sysadmin log_first_tran, CPDB1, cmf_data_lm
 sysadmin log_first_tran, CPDB4, canada_post
 sysadmin log_first_tran, CPDB1, canship_webdb
+sysadmin log_first_tran, CPDB4, svp_cp
+sysadmin log_first_tran, CPDB1, svp_cp
+sysadmin log_first_tran, CPIQ,svp_cp_iq_conn1
+
+rs_helpexception 0x0100006500000129
+
+--To retrieve a list of the excepted transactions for a given database, use, for example, the following query:
+select top 1 sys_trans_id from rs_exceptshdr where error_site = 'CPDB1' and error_db = 'lmscan' order by log_time desc;
+
+
+--To retrieve the source and output text for a transaction with a given system transaction ID, use:
+select t.texttype, t.sequence,t.textval
+from rs_systext t, rs_exceptscmd e
+where e.sys_trans_id = sys_trans_id and t.parentid = e.cmd_id
+and sys_trans_id = (select top 1 sys_trans_id from rs_exceptshdr where error_site = 'CPDB1' and error_db = 'lmscan' order by log_time desc)
+order by e.src_cmd_line, e.output_cmd_index,t.sequence;
 
 -- to resume connection skipping the bad command
 resume connection to CPDB1.lmscan skip transaction
 resume connection to CPDB1.cmf_data_lm skip transaction
 resume connection to CPDB4.canada_post skip transaction
+resume connection to CPIQ.svp_cp_iq_conn1 execute transaction
+resume connection to CPDB1.svp_cp execute transaction
+resume connection to CPDB4.svp_cp execute transaction
+
+suspend connection to CPDB1.svp_cp
+suspend connection to CPIQ.svp_cp_iq_conn1
 
 -- to resume connection retrying the bad command
 resume connection to CPDB1.cmf_data_lm execute transaction
 resume connection to CPDB1.lmscan execute transaction
 
-connect to rssd 
-go 
-rs_helppartition sq1
-rs_helppartition sq2
-rs_helppartition sq3
-rs_helppartition sq4
-rs_helppartition sq5
-rs_helppartition sq6
-rs_helppartition sq7
+connect to rssd
+go
+connect to rssd;rs_helppartition sq1;
+connect to rssd;rs_helppartition sq2;
+connect to rssd;rs_helppartition sq3;
+connect to rssd;rs_helppartition sq4;
+connect to rssd;rs_helppartition sq5;
+connect to rssd;rs_helppartition sq6;
+connect to rssd;rs_helppartition sq7;
 
 tail -n50 /opt/sybase/REP-15_5/install/hqvsybrep3.log -f
 
@@ -29,3 +51,15 @@ isql -Usa -w0000000000000000000000000000000000000000000000000000000000000000999
 
 --to check the inbound and outbound queues for a database replication
 admin who,sqm, CPDB1, canship_webdb
+
+--to solve problems due to unique key errors
+alter connection to  CPDB4.svp_cp for replicate table named svp_parcel set dsi_command_convert to 'u2di'
+alter connection to  CPDB4.pms_data for replicate table named OPONZ set dsi_command_convert to 'i2di,u2di'
+alter connection to  CPDB1.svp_cp for replicate table named svp_parcel set dsi_command_convert to 'i2di,u2di'
+alter connection to  CPDB1.lmscan for replicate table named tttl_lo_linehaul_outbound set dsi_command_convert to 'i2di,u2di'
+alter connection to  CPDB1.lmscan for replicate table named tttl_lo_linehaul_outbound set dsi_command_convert to 'none'
+alter connection to  CPIQ.svp_cp_iq_conn1 for replicate table named svp_parcel set dsi_command_convert to 'i2di,u2di'
+
+--to rollback changes to the command conversion behavior
+alter connection to  CPDB4.svp_cp for replicate table named svp_parcel set dsi_command_convert to 'none'
+

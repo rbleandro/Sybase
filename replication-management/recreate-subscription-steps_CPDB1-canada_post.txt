@@ -1,0 +1,53 @@
+--to check the inbound and outbound queues for a database replication
+admin who,sqm, CPDB1, canada_post
+--admin who,sqm, CPDB1, canada_post
+--admin who,sqm, CPIQ, canada_post_iq_conn1
+
+sysadmin hibernate_on, hqvsybrep3
+sysadmin sqm_purge_queue, 230, 0
+sysadmin hibernate_off, hqvsybrep3
+
+suspend connection to CPDB1.canada_post
+
+drop subscription CPDB2_canada_post_dbsub
+for database replication definition CPDB2_canada_post_dbrep
+with primary at CPDB2.canada_post
+with replicate at CPDB1.canada_post
+without purge
+
+resume connection to CPDB1.canada_post
+
+define subscription CPDB2_canada_post_dbsub
+for database replication definition CPDB2_canada_post_dbrep
+with primary at CPDB2.canada_post
+with replicate at CPDB1.canada_post
+subscribe to truncate table
+use dump marker
+
+validate subscription CPDB2_canada_post_dbsub
+for database replication definition CPDB2_canada_post_dbrep
+with primary at CPDB2.canada_post
+with replicate at CPDB1.canada_post
+
+Step 3:
+ 
+--dump database canada_post to '/home/sybase/db_backups/canada_post.dmp' compression=100
+--scp /home/sybase/db_backups/canada_post.dmp sybase@CPDB1:~/db_backups/
+ 
+Step 4:
+ 
+--load database canada_post from '/home/sybase/db_backups/canada_post.dmp'
+--load database canada_post from '/opt/sap/db_backups/canada_post.dmp'
+--online database canada_post
+ 
+Step 5 (ON Standby):
+ 
+use canada_post
+go
+sp_stop_rep_agent canada_post
+go
+sp_config_rep_agent canada_post, send_warm_standby_xacts,true
+go
+dbcc settrunc(ltm,ignore)
+go
+select db_name(dbid),* from master..syslogshold

@@ -1,0 +1,79 @@
+--These are sample scripts to configure and bind 
+USE master
+GO
+sp_cacheconfig 'default data cache'
+	 , '102400000K'
+GO
+USE canshipws
+GO
+sp_bindcache 'default data cache' 
+	 , 'canshipws' 
+	 , 'dbo.address' 
+GO
+USE master
+GO
+sp_cacheconfig 'tempdb0'
+	 , '20971520K'
+	 , mixed
+GO
+USE master
+GO
+sp_bindcache 'tempdb0' 
+	 , 'tempdb' 
+GO
+USE master
+GO
+sp_cacheconfig 'tempdb1'
+	 , '20971520K'
+	 , mixed
+GO
+USE master
+GO
+sp_bindcache 'tempdb1' 
+	 , 'tempdb1' 
+GO
+USE master
+GO
+sp_cacheconfig 'tempdb2'
+	 , '20971520K'
+	 , mixed
+GO
+USE master
+GO
+sp_bindcache 'tempdb2' 
+	 , 'tempdb2' 
+GO
+USE master
+GO
+sp_cacheconfig 'tempdb3'
+	 , '20971520K'
+	 , mixed
+GO
+USE master
+GO
+sp_bindcache 'tempdb3' 
+	 , 'tempdb3' 
+GO
+USE master
+GO
+sp_cacheconfig 'tempdb4'
+	 , '20971520K'
+	 , mixed
+GO
+USE master
+GO
+sp_bindcache 'tempdb4' 
+	 , 'tempdb4' 
+GO
+USE master
+GO
+sp_cacheconfig 'tempdb5'
+	 , '20971520K'
+	 , mixed
+GO
+USE master
+GO
+sp_bindcache 'tempdb5' 
+	 , 'tempdb5' 
+GO
+

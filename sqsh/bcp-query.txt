@@ -1,0 +1,57 @@
+sqsh -S SERV -U user -P passwd -D db -L bcp_colsep=',' -m bcp \
+-C 'select * from some_table where foo=bar' > /path/to/output.out
+
+#to export results to a file
+select convert(varchar(30),o.name) AS table_name,
+row_count(db_id(), o.id) AS row_count,
+data_pages(db_id(), o.id, 0) AS pages,
+(data_pages(db_id(), o.id, 0) * (@@maxpagesize/1024)) AS kbs
+,getdate() as SnapTime
+,(select isnull(max(SnapId),0)+1 from tbl_growth) as SnapId
+from sysobjects o
+where type = 'U'
+order by kbs desc
+go -m bcp 2>/dev/null >/home/rafael_leandro/growth.txt
+
+select * from systimeranges
+go -m csv 2>/dev/null >"/cygdrive/c/Users/rafael_leandro/TFI Courier/Applications Development & DBA - Database Administration/Documentation/Sybase/CPDB1/systimeranges.csv"
+
+select convert(varchar(30),o.name) AS table_name,
+row_count(db_id(), o.id) AS row_count,
+data_pages(db_id(), o.id, 0) AS pages,
+(data_pages(db_id(), o.id, 0) * (@@maxpagesize/1024)) AS mbs,
+getdate() as SnapTime,
+(select isnull(max(SnapId),0)+1 from tbl_growth) as SnapId
+from sysobjects o
+where type = 'U'
+order by mbs desc
+\bcp -S CPDB1 dba.dbo.tbl_growth
+
+select * from cz_corezone_codes 
+\bcp -S CPSYBTEST lmscan.dbo.cz_corezone_codes
+select * from cz_corezone_rates 
+\bcp -S CPSYBTEST lmscan.dbo.cz_corezone_rates
+select * from cz_driver_debrief_audit 
+\bcp -S CPSYBTEST lmscan.dbo.cz_driver_debrief_audit
+select * from cz_driver_debrief_override 
+\bcp -S CPSYBTEST lmscan.dbo.cz_driver_debrief_override
+select * from cz_driverid_corezoneid 
+\bcp -S CPSYBTEST lmscan.dbo.cz_driverid_corezoneid
+select * from cz_fuel_rate 
+\bcp -S CPSYBTEST lmscan.dbo.cz_fuel_rate
+select * from cz_overlimit_rate 
+\bcp -S CPSYBTEST lmscan.dbo.cz_overlimit_rate
+select * from cz_piece_rate 
+\bcp -S CPSYBTEST lmscan.dbo.cz_piece_rate
+select * from cz_quality_avd 
+\bcp -S CPSYBTEST lmscan.dbo.cz_quality_avd
+select * from cz_quality_missed_pickups 
+\bcp -S CPSYBTEST lmscan.dbo.cz_quality_missed_pickups
+select * from cz_quality_tdd 
+\bcp -S CPSYBTEST lmscan.dbo.cz_quality_tdd
+select * from cz_stop_rate 
+\bcp -S CPSYBTEST lmscan.dbo.cz_stop_rate
+select * from cz_user_branch 
+\bcp -S CPSYBTEST lmscan.dbo.cz_user_branch
+
+

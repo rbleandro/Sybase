@@ -1,0 +1,1 @@
+admin set_log_name, '/opt/sybase/REP-15_5/install/hqvsybrep3_0.log'

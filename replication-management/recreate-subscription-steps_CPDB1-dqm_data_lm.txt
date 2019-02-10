@@ -1,0 +1,55 @@
+--to check the inbound and outbound queues for a database replication
+admin who,sqm, CPDB1, dqm_data_lm
+--admin who,sqm, CPDB1, dqm_data_lm
+--admin who,sqm, CPIQ, dqm_data_lm_iq_conn1
+
+sysadmin hibernate_on, hqvsybrep3
+sysadmin sqm_purge_queue, 230, 0
+sysadmin hibernate_off, hqvsybrep3
+
+suspend connection to CPDB1.dqm_data_lm
+go
+drop subscription CPDB2_dqm_data_lm_dbsub
+for database replication definition CPDB2_dqm_data_lm_dbrep
+with primary at CPDB2.dqm_data_lm
+with replicate at CPDB1.dqm_data_lm
+without purge
+go
+resume connection to CPDB1.dqm_data_lm
+go
+define subscription CPDB2_dqm_data_lm_dbsub
+for database replication definition CPDB2_dqm_data_lm_dbrep
+with primary at CPDB2.dqm_data_lm
+with replicate at CPDB1.dqm_data_lm
+subscribe to truncate table
+use dump marker
+go
+validate subscription CPDB2_dqm_data_lm_dbsub
+for database replication definition CPDB2_dqm_data_lm_dbrep
+with primary at CPDB2.dqm_data_lm
+with replicate at CPDB1.dqm_data_lm
+go
+resume connection to CPDB1.dqm_data_lm;
+
+Step 3:
+ 
+--dump database dqm_data_lm to '/home/sybase/db_backups/dqm_data_lm.dmp' compression=100
+--scp /home/sybase/db_backups/dqm_data_lm.dmp sybase@CPDB1:~/db_backups/
+ 
+Step 4:
+ 
+--load database dqm_data_lm from '/home/sybase/db_backups/dqm_data_lm.dmp'
+--load database dqm_data_lm from '/opt/sap/db_backups/dqm_data_lm.dmp'
+--online database dqm_data_lm
+ 
+Step 5 (ON Standby):
+ 
+use dqm_data_lm
+go
+sp_stop_rep_agent dqm_data_lm
+go
+sp_config_rep_agent dqm_data_lm, send_warm_standby_xacts,true
+go
+dbcc settrunc(ltm,ignore)
+go
+select db_name(dbid),* from master..syslogshold

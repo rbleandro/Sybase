@@ -1,11 +1,11 @@
-/opt/sap/OCS-16_0/bin/bcp lmscan..COSDataCapture_partial out /home/sybase/db_backups/COSDataCapture_partial.dat -n -S CPDB1 -U sa -P s9b2s3
-/opt/sap/OCS-16_0/bin/bcp cmf_data..points_no_ranges out /home/sybase/db_backups/cmfdata_cp_points_no_ranges.dat -n -S CPSYBTEST -U sa -P s9b2s3
+/opt/sap/OCS-16_0/bin/bcp lmscan..COSDataCapture_partial out /home/sybase/db_backups/COSDataCapture_partial.dat -n -S CPDB2 -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp cmf_data..points_no_ranges out /home/sybase/db_backups/cmfdata_cp_points_no_ranges.dat -n -S CPSYBTEST -U sa -P 
 
 scp /home/sybase/db_backups/COSDataCapture_partial.dat sybase@10.3.1.165:~/db_backups/
 scp /home/sybase/db_backups/cmfdata_cp_points_no_ranges.dat sybase@10.3.1.71:~/db_backups/
 
 
-/opt/sap/OCS-16_0/bin/bcp cmf_data_lm..points_no_ranges out /home/sybase/db_backups/points_no_ranges_20180413_1135.dat -n -S CPDB1 -U sa -P s9b2s3
+/opt/sap/OCS-16_0/bin/bcp cmf_data_lm..points_no_ranges out /home/sybase/db_backups/points_no_ranges_20180413_1135.dat -n -S CPDB2 -U sa -P 
 
 
 
@@ -13,28 +13,45 @@ Restoring:
 {
 	Linux
 	{
-		/opt/sap/OCS-16_0/bin/bcp cmf_data_lm..points_no_ranges_restore in /home/sybase/db_backups/points_no_ranges_20180413_1135.dat -n -S CPDB1 -U sa -P s9b2s3
-		/opt/sap/OCS-16_0/bin/bcp lmscan..COSDataCapture in /home/sybase/db_backups/COSDataCapture_partial.dat -n -S CPSYBTEST -U sa -P s9b2s3
-		/opt/sap/OCS-16_0/bin/bcp tempdb7.dbo.points_no_ranges in /home/sybase/db_backups/cmfdata_cp_points_no_ranges.dat -n -S CPDB1 -U sa -P s9b2s3
+		/opt/sap/OCS-16_0/bin/bcp cmf_data_lm..points_no_ranges_restore in /home/sybase/db_backups/points_no_ranges_20180413_1135.dat -n -S CPDB2 -U sa -P 
+		/opt/sap/OCS-16_0/bin/bcp lmscan..COSDataCapture in /home/sybase/db_backups/COSDataCapture_partial.dat -n -S CPSYBTEST -U sa -P 
+		/opt/sap/OCS-16_0/bin/bcp tempdb7.dbo.points_no_ranges in /home/sybase/db_backups/cmfdata_cp_points_no_ranges.dat -n -S CPDB2 -U sa -P 
 	}
 
 	Windows
 	{
-		bcp tempdb7..points_no_ranges_ticket_110048 in C:\Users\rafael_leandro\Downloads\ticket_110048.csv -c -t , -S CPDB1 -U sa -P s9b2s3 -F 2
+		bcp tempdb7..points_no_ranges_ticket_110048 in C:\Users\rafael_leandro\Downloads\ticket_110048.csv -c -t , -S CPDB2 -U sa -P  -F 2
 	}
 }
 
 
-bcp Hub_db..HubConversation in /home/sybase/db_backups/bcp/HubConversation.dat -c -t"|" -S CPSYBTEST -U sa -P s9b2s3
-bcp Hub_db..HubEmployee in /home/sybase/db_backups/bcp/HubEmployee.dat -c -t"|" -S CPSYBTEST -U sa -P s9b2s3
-bcp Hub_db..HubStatus in /home/sybase/db_backups/bcp/HubStatus.dat -c -t"|" -S CPSYBTEST -U sa -P s9b2s3
-bcp Hub_db..HubStatusReason in /home/sybase/db_backups/bcp/HubStatusReason.dat -c -t"|" -S CPSYBTEST -U sa -P s9b2s3
-bcp Hub_db..HubTerminal in /home/sybase/db_backups/bcp/HubTerminal.dat -c -t"|" -S CPSYBTEST -U sa -P s9b2s3
-bcp Hub_db..ScanEvent in /home/sybase/db_backups/bcp/ScanEvent.dat -c -t"|" -S CPSYBTEST -U sa -P s9b2s3
-bcp Hub_db..ScanEventAttribute in /home/sybase/db_backups/bcp/ScanEventAttribute.dat -c -t"|" -S CPSYBTEST -U sa -P s9b2s3
+/opt/sap/OCS-16_0/bin/bcp Hub_db..HubConversation in /home/sybase/db_backups/bcp/HubConversation.dat -c -t"|" -S CPSYBTEST -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp Hub_db..HubEmployee in /home/sybase/db_backups/bcp/HubEmployee.dat -c -t"|" -S CPSYBTEST -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp Hub_db..HubStatus in /home/sybase/db_backups/bcp/HubStatus.dat -c -t"|" -S CPSYBTEST -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp Hub_db..HubStatusReason in /home/sybase/db_backups/bcp/HubStatusReason.dat -c -t"|" -S CPSYBTEST -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp Hub_db..HubTerminal in /home/sybase/db_backups/bcp/HubTerminal.dat -c -t"|" -S CPSYBTEST -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp Hub_db..ScanEvent in /home/sybase/db_backups/bcp/ScanEvent.dat -c -t"|" -S CPSYBTEST -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp Hub_db..ScanEventAttribute in /home/sybase/db_backups/bcp/ScanEventAttribute.dat -c -t"|" -S CPSYBTEST -U sa -P 
 
+/opt/sap/OCS-16_0/bin/bcp svp_cp..scan_compliance_header out /home/sybase/db_backups/scan_compliance_header_cp.dat -c -t"|" -S CPDB2 -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp svp_cp..scan_compliance out /home/sybase/db_backups/scan_compliance_cp.dat -c -t"|" -S CPDB2 -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp svp_cp..scan_compliance_alt_term out /home/sybase/db_backups/scan_compliance_alt_term_cp.dat -c -t"|" -S CPDB2 -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp svp_cp..scan_compliance_cust_override out /home/sybase/db_backups/scan_compliance_cust_override_cp.dat -c -t"|" -S CPDB2 -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp svp_lm..scan_compliance_header out /home/sybase/db_backups/scan_compliance_header_lm.dat -c -t"|" -S CPDB2 -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp svp_lm..scan_compliance out /home/sybase/db_backups/scan_compliance_lm.dat -c -t"|" -S CPDB2 -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp svp_lm..scan_compliance_alt_term out /home/sybase/db_backups/scan_compliance_alt_term_lm.dat -c -t"|" -S CPDB2 -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp svp_lm..scan_compliance_cust_override out /home/sybase/db_backups/scan_compliance_cust_override_lm.dat -c -t"|" -S CPDB2 -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp cpscan..scan_compliance_stats out /home/sybase/db_backups/scan_compliance_stats.dat -c -t"|" -S CPDB2 -U sa -P 
 
-
+/opt/sap/OCS-16_0/bin/bcp scan_compliance..scan_compliance_header_cp in /home/sybase/db_backups/scan_compliance_header_cp.dat -c -t"|" -S CPDB2 -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp scan_compliance..scan_compliance_cp in /home/sybase/db_backups/scan_compliance_cp.dat -c -t"|" -S CPDB2 -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp scan_compliance..scan_compliance_alt_term_cp in /home/sybase/db_backups/scan_compliance_alt_term_cp.dat -c -t"|" -S CPDB2 -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp scan_compliance..scan_compliance_cust_override_cp in /home/sybase/db_backups/scan_compliance_cust_override_cp.dat -c -t"|" -S CPDB2 -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp scan_compliance..scan_compliance_header_lm in /home/sybase/db_backups/scan_compliance_header_lm.dat -c -t"|" -S CPDB2 -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp scan_compliance..scan_compliance_lm in /home/sybase/db_backups/scan_compliance_lm.dat -c -t"|" -S CPDB2 -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp scan_compliance..scan_compliance_alt_term_lm in /home/sybase/db_backups/scan_compliance_alt_term_lm.dat -c -t"|" -S CPDB2 -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp scan_compliance..scan_compliance_cust_override_lm in /home/sybase/db_backups/scan_compliance_cust_override_lm.dat -c -t"|" -S CPDB2 -U sa -P 
+/opt/sap/OCS-16_0/bin/bcp scan_compliance..scan_compliance_stats in /home/sybase/db_backups/scan_compliance_stats.dat -c -t"|" -S CPDB2 -U sa -P 
 
 usage: bcp [[db_name.]owner.]table_name[:slice_num] [partition pname] {in | out} [filename]
         [-m maxerrors] [-f formatfile] [-e errfile] [-d discardfileprefix]

@@ -1,0 +1,53 @@
+--to check the inbound and outbound queues for a database replication
+admin who,sqm, CPDB1, svp_cp
+--admin who,sqm, CPDB1, svp_cp
+--admin who,sqm, CPIQ, svp_cp_iq_conn1
+
+sysadmin hibernate_on, hqvsybrep3
+sysadmin sqm_purge_queue, 230, 0
+sysadmin hibernate_off, hqvsybrep3
+
+suspend connection to CPDB1.svp_cp
+
+drop subscription CPDB2_svp_cp_dbsub
+for database replication definition CPDB2_svp_cp_dbrep
+with primary at CPDB2.svp_cp
+with replicate at CPDB1.svp_cp
+without purge
+
+resume connection to CPDB1.svp_cp
+
+define subscription CPDB2_svp_cp_dbsub
+for database replication definition CPDB2_svp_cp_dbrep
+with primary at CPDB2.svp_cp
+with replicate at CPDB1.svp_cp
+subscribe to truncate table
+use dump marker
+
+validate subscription CPDB2_svp_cp_dbsub
+for database replication definition CPDB2_svp_cp_dbrep
+with primary at CPDB2.svp_cp
+with replicate at CPDB1.svp_cp
+
+Step 3:
+ 
+--dump database svp_cp to '/home/sybase/db_backups/svp_cp.dmp' compression=100
+--scp /home/sybase/db_backups/svp_cp.dmp sybase@CPDB1:~/db_backups/
+ 
+Step 4:
+ 
+--load database svp_cp from '/home/sybase/db_backups/svp_cp.dmp'
+--load database svp_cp from '/opt/sap/db_backups/svp_cp.dmp'
+--online database svp_cp
+ 
+Step 5 (ON Standby):
+ 
+use svp_cp
+go
+sp_stop_rep_agent svp_cp
+go
+sp_config_rep_agent svp_cp, send_warm_standby_xacts,true
+go
+dbcc settrunc(ltm,ignore)
+go
+select db_name(dbid),* from master..syslogshold

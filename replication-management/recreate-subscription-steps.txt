@@ -1,46 +1,47 @@
-sysadmin hibernate_on, hqvsybrep3
-
 --to check the inbound and outbound queues for a database replication
-admin who,sqm, CPDB1, canship_webdb
-sysadmin sqm_purge_queue, 194, 0
+admin who,sqm, CPDB4, svp_cp
+--admin who,sqm, CPDB4, svp_cp
+--admin who,sqm, CPIQ, svp_cp_iq_conn1
 
+sysadmin hibernate_on, hqvsybrep3
+sysadmin sqm_purge_queue, 246, 0
 sysadmin hibernate_off, hqvsybrep3
 
---suspend connection to CPDB1.canship_webdb
+--suspend connection to CPDB4.svp_cp
 
-drop subscription CPDB2_canship_webdb_dbsub
-for database replication definition CPDB2_canship_webdb_dbrep
-with primary at CPDB2.canship_webdb
-with replicate at CPDB1.canship_webdb
+drop subscription CPDB4_svp_cp_dbsub
+for database replication definition CPDB2_svp_cp_dbrep
+with primary at CPDB2.svp_cp
+with replicate at CPDB4.svp_cp
 without purge
 
-define subscription CPDB2_canship_webdb_dbsub
-for database replication definition CPDB2_canship_webdb_dbrep
-with primary at CPDB2.canship_webdb
-with replicate at CPDB1.canship_webdb
+define subscription CPDB4_svp_cp_dbsub
+for database replication definition CPDB2_svp_cp_dbrep
+with primary at CPDB2.svp_cp
+with replicate at CPDB4.svp_cp
 subscribe to truncate table
 use dump marker
 
-validate subscription CPDB2_canship_webdb_dbsub
-for database replication definition CPDB2_canship_webdb_dbrep
-with primary at CPDB2.canship_webdb
-with replicate at CPDB1.canship_webdb
+validate subscription CPDB4_svp_cp_dbsub
+for database replication definition CPDB2_svp_cp_dbrep
+with primary at CPDB2.svp_cp
+with replicate at CPDB4.svp_cp
 
 Step 3:
  
-Dump canship_webdb
+Dump svp_cp
  
 Step 4:
  
-Load canship_webdb on standby (CPDB1)
+Load svp_cp on standby (CPDB4)
  
 Step 5 (ON Standby):
  
-use canship_webdb
+use svp_cp
 go
-sp_stop_rep_agent canship_webdb
+sp_stop_rep_agent svp_cp
 go
-sp_config_rep_agent canship_webdb, send_warm_standby_xacts,true
+sp_config_rep_agent svp_cp, send_warm_standby_xacts,true
 go
 dbcc settrunc(ltm,ignore)
 go

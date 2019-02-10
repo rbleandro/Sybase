@@ -1,2 +1,2 @@
-Dsn=sybase_lmscan;Driver={Adaptive Server Enterprise};app=SSIS;server=CPDB1.canpar.com;port=4100;db=lmscan;uid=sa;pwd=s9b2s3
-Dsn=sybtest_lmscan;Driver={Adaptive Server Enterprise};app=SSIS;server=CPSYBTEST.canpar.com;port=4100;db=lmscan;uid=sa;pwd=s9b2s3
+Dsn=sybase_lmscan;Driver={Adaptive Server Enterprise};app=SSIS;server=CPDB1.canpar.com;port=4100;db=lmscan;uid=sa;pwd=
+Dsn=sybtest_lmscan;Driver={Adaptive Server Enterprise};app=SSIS;server=CPSYBTEST.canpar.com;port=4100;db=lmscan;uid=sa;pwd=

@@ -50,7 +50,7 @@ rs.rs_name: hqvsybrep3
 rs.rs_rs_sa_user: sa
 
 # sa password for this Replication Server
-rs.rs_rs_sa_pass: s9b2s3
+rs.rs_rs_sa_pass: 
 
 #############################################################
 # DATABASE INFORMAITON
@@ -64,7 +64,7 @@ rs.rs_ds_name: CPDB1
 rs.rs_ds_sa_user: USE_DEFAULT
 
 # sa password for this Adaptive Server
-rs.rs_ds_sa_password: s9b2s3
+rs.rs_ds_sa_password: 
 
 # name of the database that you are adding to the replicated data system
 rs.rs_db_name: canship_webdb
@@ -112,7 +112,7 @@ rs.ltm_name: USE_DEFAULT
 rs.rs_ltm_rs_user: hqvsybrep3_ra
 
 # the password for the login name for the log transfer manager
-rs.rs_ltm_rs_pass: s9b2s3
+rs.rs_ltm_rs_pass: 
 
 # the login name for the user who will start and shutdown the log
 # transfer manager for this database

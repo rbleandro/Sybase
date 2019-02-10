@@ -17,33 +17,34 @@ log >>> suspend Processes suspended by reaching the last-chance threshold on the
 DECLARE @OrderBy_Criteria VARCHAR(128),@clockrate int
 set @clockrate  = (select convert(int,cc.value2) from master.dbo.syscurconfigs cc inner join master.dbo.sysconfigures sc on cc.config=sc.config where sc.name='sql server clock tick length')
 --set @OrderBy_Criteria = 'b' --blocked
-SET @OrderBy_Criteria = 'cpu'
+--SET @OrderBy_Criteria = 'cpu'
+SET @OrderBy_Criteria = 'spid'
 --set @OrderBy_Criteria = 'd' --duration
 --set @OrderBy_Criteria = 'pr' - physical reads 
 
 SELECT
-	spid,
-	'kill ' + cast(spid as varchar(50)) 'KillCmd',
-	'exec sp_showplan('+cast(spid as varchar(50))+')' 'Plan'
-	,query_text(spid) as Query
-	,CASE cmd 
+	sp.spid
+	--,pw.WaitTime,wi.Description,
+	--'exec sp_showplan('+cast(sp.spid as varchar(50))+')' 'Plan'
+	,case query_text(sp.spid) when NULL then sp.cmd else query_text(sp.spid) end as cmd
+	,CASE sp.cmd 
 		WHEN 'NETWORK HANDLER' 
 		THEN NULL 
-		ELSE DB_NAME(dbid) 
+		ELSE DB_NAME(sp.dbid) 
 	END 'Database',
-	execution_time,
-	status,
-	SUSER_NAME(suid) 'user',
+	sp.execution_time as 'extime',
+	sp.status,
+	SUSER_NAME(sp.suid) 'user',
 	case 
-	    CASE clienthostname 
+	    CASE sp.clienthostname 
             WHEN '' 
-            THEN hostname 
+            THEN sp.hostname 
             WHEN NULL 
-            THEN hostname 
-            ELSE clienthostname 
+            THEN sp.hostname 
+            ELSE sp.clienthostname 
 	    END
 	WHEN NULL then 
-	    case ipaddr 
+	    case sp.ipaddr 
 	        when '10.4.96.82' then 'lmsdc1vaproc02' 
 	        when '10.3.1.223' then 'hqvmanproc1' 
 	        when '10.4.96.121' then 'lmsdc1vaproc01' 
@@ -57,54 +58,85 @@ SELECT
 	        when '10.4.96.103' then 'lmscrystrpt1'
 	        
 	    end 
-	    else CASE clienthostname 
+	    else CASE sp.clienthostname 
             WHEN '' 
-            THEN hostname 
+            THEN sp.hostname 
             WHEN NULL 
-            THEN hostname 
-            ELSE clienthostname 
+            THEN sp.hostname 
+            ELSE sp.clienthostname 
 	    END
 	end 'host',
 
-	CASE clientapplname 
+	CASE sp.clientapplname 
 		WHEN '' 
-		THEN program_name 
+		THEN sp.program_name 
 		WHEN NULL 
-		THEN program_name 
-		ELSE clientapplname 
+		THEN sp.program_name 
+		ELSE sp.clientapplname 
 	END 'program',
-	memusage,
-	cpu*@clockrate/1000 as 'CPU(ms)',
-	physical_io,
-	blocked 'Blocked spid',
-	case blocked when 0 then '0' else query_text(blocked) end as BlockingQuery,
-	cmd,
-	tran_name 'Transaction',
-	time_blocked 'Time Blocked',
-	network_pktsz 'Network Packet Size',
-	block_xloid 'Lock Owner Id',
-	ipaddr 'IP address',
-	loggedindatetime 'Last Login' 
+	sp.memusage,
+	sp.cpu*@clockrate/1000 as 'CPU(ms)',
+	sp.physical_io,
+	sp.blocked 'blkpid',
+	--case blocked when 0 then '0' else query_text(blocked) end as BlockingQuery,
+	--sp.cmd,
+	--tran_name 'Transaction',
+	sp.time_blocked 'tblk',
+	--network_pktsz 'Network Packet Size',
+	--block_xloid 'Lock Owner Id',
+	--ipaddr 'IP address',
+	--loggedindatetime 'Last Login' ,
+	--enginenum
 	--,show_plan(spid,-1, -1, -1,-1)
+	
+	sp1.blocked as bblkpid
+	,sp1.cmd as bcmd
+	,sp1.status as bstatus
+	,CASE sp1.clientapplname 
+		WHEN '' 
+		THEN sp1.program_name 
+		WHEN NULL 
+		THEN sp1.program_name 
+		ELSE sp1.clientapplname 
+	END 'bprogram',
+	CASE sp1.clienthostname 
+            WHEN '' 
+            THEN sp1.hostname 
+            WHEN NULL 
+            THEN sp1.hostname 
+            ELSE sp1.clienthostname 
+	    END as 'bhost'
+    ,SUSER_NAME(sp1.suid) 'buser'
+	,case sp1.spid when NULL then 'N/A' else 'kill ' + cast(sp1.spid as varchar(50)) end as 'KillCmd'
+	,(select count(*) from master..systransactions s where s.spid=sp.blocked) as '#btran'
 FROM
-	master.dbo.sysprocesses 
+	master.dbo.sysprocesses sp
+	left join master.dbo.sysprocesses sp1 on sp.blocked = sp1.spid
+--	inner join dbo.monProcessWaits pw on sp.spid = pw.SPID
+--    inner join monWaitEventInfo wi on pw.WaitEventID = wi.WaitEventID
 where 1=1
 --and hostname = host_name()
-and DB_NAME(dbid) not in  ('tempdb3')
-and status not in ('background')
-and cmd not in ('HK WASH','HK GC','HK CHORES','NETWORK HANDLER','MEMORY TUNE','DEADLOCK TUNE','SHUTDOWN HANDLER','KPP HANDLER','ASTC HANDLER','CHECKPOINT SLEEP','PORT MANAGER','AUDIT PROCESS','CHKPOINT WRKR','LICENSE HEARTBEAT','JOB SCHEDULER')
-and status <> 'recv sleep'
-and spid <> @@spid 
---and cmd = 'LOAD DATABASE'
---and spid=3841
+and DB_NAME(sp.dbid) not in  ('tempdb3')
+and sp.status not in ('background')
+and sp.cmd not in ('HK WASH','HK GC','HK CHORES','NETWORK HANDLER','MEMORY TUNE','DEADLOCK TUNE','SHUTDOWN HANDLER','KPP HANDLER','ASTC HANDLER','CHECKPOINT SLEEP','PORT MANAGER','AUDIT PROCESS','CHKPOINT WRKR','LICENSE HEARTBEAT','JOB SCHEDULER')
+and sp.status <> 'recv sleep'
+and sp.spid <> @@spid 
+and sp.blocked not in (select distinct spid from master..syslocks where spid not in (select spid from master..sysprocesses))
+--and hostname = '670-D-102766'
+--and cmd = 'AWAITING COMMAND'
+--and spid=2681
 --and SUSER_NAME(suid) = 'lm_data_loader'
 --and blocked <> 0
---and program_name='uvsh'
+--and program_name='ICS_Data_Transfer2.exe'
 ORDER BY CASE @OrderBy_Criteria
-        WHEN 'pr' THEN physical_io
-        WHEN 'cpu' THEN cpu
-        WHEN 'd' THEN execution_time
-        WHEN 'b' THEN time_blocked
-END desc
-go				
+        WHEN 'pr'   THEN sp.physical_io
+        WHEN 'cpu'  THEN sp.cpu
+        WHEN 'd'    THEN sp.execution_time
+        WHEN 'b'    THEN sp.time_blocked
+        WHEN 'spid' THEN sp.spid
+END desc    
+go		
+select db_name(dbid),* from master..syslogshold
+go
 
+--kill 2070

@@ -1,0 +1,111 @@
+Symptom:
+This document describes the steps to apply a new Service Pack to ASE for a minor upgrade within the same major version
+A major version is 15.7 or 16.0.  An upgrade of a minor version is done within the same major version family such as upgrading ASE 15.7 SP137 to 15.7 SP140
+
+Environment:
+SAP Adaptive Server Enterprise (ASE) 15.x
+SAP Adaptive Server Enterprise (ASE) 16.x
+
+1. Download SAP ASE: 
+
+	• Go to SAP Support Portal Home
+	• Navigate to SAP ASE software via (clicking on) these steps.
+	• Download Software
+	• Support Packages and Patches on the top
+	• By Alphabetical Index (A-Z)
+	• A
+	• SAP ADAPTIVE SERVER ENTERPRISE
+	• SAP ASE 16.0 or SYBASE ASE 15.7
+	• SAP ASE SERVER 16.0 or SYBASE ASE SERVER 15.7
+	• Select platform desired
+	• Locate latest SAP ASE version for the desired platform.
+	• Click link in the Name column to download the desired release
+	• The Readme files can be found in the Related Info column by clicking on Content Info in the line from step j.  
+	• This will select an SAP Note containing the files for the desired release
+	• For Windows 
+	• File is in ZIP format. Unzip it using winrar.
+	• For Unix 
+	• File is in TGZ format. Unzip it using gunzip. Untar it using tar xvf
+	• Update SAP ASE
+	• Before proceeding, shutdown/stop all applications including the ASE, Backup Server, XP Server, SCC, Cockpit, repserver and any other applications running from the $SYBASE (Unix) or %SYBASE% (Windows) directory.
+
+2. Windows Updates steps﻿
+
+	• Navigate to the directory where the extracted software is located.
+	• Click on setup.exe which invokes the graphical setup wizard, choose Next on the opening window.
+	• Choose the directory where the existing ASE software is installed (default is C:\Sybase), choose Next.
+	• The wizard will state if it is installing into an existing directory or will replace older versions of the products installed, choose Next.
+	• The installer will detect an older version of ASE and ask if the current version should be updated.  Select Yes, choose Next.
+	• Select a geographic location, choose agree to the terms of the license in order to proceed, choose Next.
+	• Click Install to update the software.
+	• The installer will prompt to either update the ASE with the 'updatease' utility or skip.
+		• If Update Adaptive Server is selected, follow the prompts through to the end and the installation will update the ASE.
+		• If the ASE is to be manually updated, or it is preferred to run 'updatease' later, choose Next.
+	• When the installation of the update is complete, choose Done.
+	• If running 'updatease' is skipped, either run the 'updatease' application or proceed with the steps to manually update ASE below.
+
+3. Unix Update Steps:
+
+	• Navigate to the directory where the extracted software is located with a command line.
+	• Run 'setup.bin –i console' which invokes the non-graphical setup wizard, press enter to continue.
+	• Enter path to where the existing ASE software is installed.
+	• The installer will prompt to apply updates or to select features to be updated.  Choose Yes for the installer to apply updates.
+	• If multiple products are found to apply updates, choose Update all components, press enter to continue.
+	• Enter the location number and agree to the License Agreement (type back, followed by y) when prompted.
+	• Continue to install the update for SAP Adaptive Server Enterprise, press enter to continue, then press enter to perform the install.
+	• If updating ASE 16, the installer may request input on where data files are located.  Modify if necessary or choose the detected directory.
+	• The installer will prompt asking to update the ASE with the 'updatease' utility.
+		• If Y is selected follow the prompts until completed at which time the installer will complete the installation and update the ASE. 
+		• If N is selected, it will skip the updatease utility, requiring manual update to ASE or run 'updatease' to perform the update.
+	• Press enter to exit the installer.
+	• If it is elected to skip running 'updatease', either run the 'updatease' application or proceed with the steps to manually update ASE below.
+	• If you did not skip running 'updatease', finish the process by going to http://infocenter.sybase.com/help/index.jsp?topic=/com.sybase.infocenter.dc35889.1600/doc/html/san1253301420481.html and performing the post-installation tasks
+	
+4. Steps to manually update ASE if 'updatease' was not chosen during update.
+    
+	Before running 'updatease' or manually updating ASE, make sure the ASE has been started and is accepting connections.
+	Performing the update with the 'updatease' utility:
+
+	• The updatease utility can be found in the $SYBASE/$SYBASE_ASE/bin (Unix) or %SYBASE%\%SYBASE_ASE% (Windows) directory. Navigate to this location from a command line
+	• Execute 'updatease -P -S<servername>'
+	• The utility will run the scripts needed to update ASE
+	• When it is finished running the scripts, it will restart ASE which will conclude the update to ASE for the new version
+	• Go to http://infocenter.sybase.com/help/index.jsp?topic=/com.sybase.infocenter.dc35889.1600/doc/html/san1253301420481.html and perform post-installation tasks
+
+Manually updating ASE:
+
+	• Navigate to $SYBASE/$SYBASE_ASE/scripts (Unix) or %SYBASE%\%SYBASE_ASE%\scripts (Windows) to run any updated scripts.  The examples use the Unix naming convention for the script files.  Please substitute the Windows file name were appropriate if updating ASE on Windows.
+	• Run the installmaster (Unix) or instmstr (Windows) script 
+		isql -Usa -P -SCPDB2 -i installmaster -o /opt/sap/ASE-16_0/scripts/installmaster_sp3.out
+	• Run the instmsgs.ebf script (Unix and Windows)
+		isql -Usa -P -SCPDB2 -i instmsgs.ebf -o /opt/sap/ASE-16_0/scripts/instmsgs_sp3.out
+	• Run the installmodel (Unix) or instmodl (Windows) script 
+		isql -Usa -P -SCPDB2 -i installmodel -o /opt/sap/ASE-16_0/scripts/installmodel_sp3.out
+		
+	• If two-phase commit or distributed transactions is used, run the installcommit (Unix) or instcomm (Windows) script 
+		isql -Usa -P -SCPDB2 -i installcommit -o /opt/sap/ASE-16_0/scripts
+	• If the Auditng functionality in ASE is used, run the installsecurity (Unix) or instsecu (Windows) script 
+		isql -Usa -P -SCPDB2 -i installsecurity -o /opt/sap/ASE-16_0/scripts
+	• If the HA functionality is enabled, run the installhasvss (Unix) or insthasv (Windows) script 
+		isql -Usa -P -SCPDB2 -i installhasvss -o /opt/sap/ASE-16_0/scripts
+	• If the dbccdb database for checkstorage is created, run the installdbccdb script (Unix and Windows) 
+		isql -Usa -P -SCPDB2 -i installdbccdb -o /opt/sap/ASE-16_0/scripts
+	• If Java in the database functionality is used, run the installpcidb script (Unix and Windows) 
+		isql -Usa -P -SCPDB2 -i installpcidb -o /opt/sap/ASE-16_0/scripts
+	• If the Job Scheduler is enabled, run the installjsdb script (Unix and Windows) Stop the Job Scheduler, execute the following using isql
+
+		use sybmgmtdb
+		go
+		sp_jobcontrol @name=NULL, @option="stop_js"
+		go 
+		  
+		isql -Usa -P -SCPDB2 -i installjsdb -o /opt/sap/ASE-16_0/scripts 
+
+		Start the Job Scheduler, execute the following using isql:
+		use sybmgmtdb
+		go
+		sp_jobcontrol @name=NULL, @option="start_js"
+		go
+		
+	• Once these scripts have been run, this concludes the update to ASE for the new version.
+	• Go to http://infocenter.sybase.com/help/index.jsp?topic=/com.sybase.infocenter.dc35889.1600/doc/html/san1253301420481.html and perform post-installation tasks
