@@ -54,4 +54,12 @@ select * from cz_stop_rate
 select * from cz_user_branch 
 \bcp -S CPSYBTEST lmscan.dbo.cz_user_branch
 
+select * from cmf_data..tot_tm 
+\bcp -S CPSYBTEST cmf_data.dbo.tot_tm
+select * from cmf_data..tot_pt
+\bcp -S CPSYBTEST cmf_data.dbo.tot_pt
+select * from cmf_data_lm..tot_tm
+\bcp -S CPSYBTEST cmf_data_lm.dbo.tot_tm
+select * from cmf_data_lm..tot_pt
+\bcp -S CPSYBTEST cmf_data_lm.dbo.tot_pt
 

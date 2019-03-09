@@ -1,0 +1,81 @@
+#make sure to install the right version of sqsh. Install 2.5 for SYBASE 15 and below and 2.5.16 for SYBASE 16 (more details in https://sourceforge.net/projects/sqsh/files/)
+#It is a good idea to execute the steps below with the same user you used to install SYBASE ASE
+
+subscription-manager register --username amerk71 --password canpar --auto-attach #run only if not registered to rpm already
+cd $HOME
+mkdir src
+cd src
+tar xzf ~/Downloads/sqsh-2.5.16.tgz #change your download directory here
+cd sqsh-2.5
+sudo yum install readline-devel #run only if you don't already have a readline package. This is a high recommended package when using sqsh
+export SYBASE=/opt/sap #execute only if  the environment variable is not already set
+./configure #execute from sqsh-2.5 directory
+make #execute from sqsh-2.5 directory
+sudo make install #execute from sqsh-2.5 directory
+sudo make install.man #execute from sqsh-2.5 directory
+man sqsh #to test man pages
+
+cp doc/sqshrc-2.5 $HOME/.sqshrc
+chmod 600 $HOME/.sqshrc
+mkdir tmp $HOME/.sqsh
+chmod 700 $HOME/.sqsh
+
+# aliases for T-SQL commands
+\alias statson='\loop -e "set statistics io on set statistics time on"'
+\alias statsoff='\loop -e "set statistics io off set statistics time 
+off"'
+\alias planon='\loop -e "set showplan on"'
+\alias planoff='\loop -e "set showplan off"'
+\alias ton='\loop -e "dbcc traceon(3604)"'
+\alias toff='\loop -e "dbcc traceoff(3604)"'
+\alias tmp='\loop -e "use tempdb"'
+\alias mas='\loop -e "use master"'
+\alias ssp='\loop -e "use sybsystemprocs"'
+
+# aliases for sqsh commands
+\alias h='\history'
+\alias xx='\reset'
+\alias prod='\reconnect -SCPDB1 -Usa'
+\alias rep='\reconnect -Shqvsybrep3 -Usa '
+\alias dr='\reconnect -SCPDB4 -Usa '
+\alias stby='\reconnect -SCPDB2 -Usa '
+\alias test='\reconnect -SCPSYBTEST -Usa '
+\alias iq='\reconnect -SCPIQ -Usa '
+\alias REPX126='\reconnect -c -SREPX126 -Usa '
+\alias REPX125='\reconnect -c -SREPX125 -Usa '
+
+
+#interfaces entries
+
+hqvsybrep3
+        master tcp ether 10.3.1.83 4000
+        query tcp ether 10.3.1.83 4000
+
+hqvsybrep3_erssd
+        master tcp ether 10.3.1.83 4100
+        query tcp ether 10.3.1.83 4100
+
+hqvsybrep3_erssd_ra
+        master tcp ether 10.3.1.83 4101
+        query tcp ether 10.3.1.83 4101
+
+CPDB1
+        master tcp ether 10.3.1.70 4100
+        query tcp ether 10.3.1.70 4100
+
+CPDB2
+        master tcp ether 10.3.1.71 4100
+        query tcp ether 10.3.1.71 4100
+
+CPDB4
+        master tcp ether 10.152.30.40 4100
+        query tcp ether 10.152.30.40 4100
+
+CPIQ
+        master tcp ether 10.3.1.24 2638
+        query tcp ether 10.3.1.24 2638
+
+sybrep3da
+        master tcp ether 10.3.1.83 4501
+        query tcp ether 10.3.1.83 4501
+

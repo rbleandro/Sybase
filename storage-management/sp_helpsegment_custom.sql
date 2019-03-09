@@ -1,4 +1,4 @@
-use dba
+use sort_data
 go
 CREATE OR REPLACE PROCEDURE dbo.sp_helpsegment_custom
 @segname varchar(255) = NULL		/* segment name */
