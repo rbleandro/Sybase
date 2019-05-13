@@ -47,3 +47,6 @@ go
 go
 dbcc checktable("tttl_ev_event")
 go
+
+dbcc dbrepair(rev_hist, redo_shrink) --to fix objects left inconsistent after a failed shrink op
+go

@@ -13,6 +13,111 @@ where type = 'U'
 order by kbs desc
 go -m bcp 2>/dev/null >/home/rafael_leandro/growth.txt
 
+-----------------------------------------------------------------
+
+SELECT reference_num, service_type, shipper_num, convert(varchar(50),conv_time_date,121) as conv_time_date, employee_num, status, convert(varchar(50),scan_time_date,121) as scan_time_date, terminal_num
+, pickup_shipper_num, postal_code, additional_serv_flag, mod10b_fail_flag, multiple_barcode_flag, multiple_shipper_flag
+, comments_flag, convert(varchar(50),inserted_on_cons,121) as inserted_on_cons, convert(varchar(50),updated_on_cons,121) as updated_on_cons
+FROM cpscan.dbo.tttl_ev_event noholdlock 
+where inserted_on_cons >= '2019-04-12 12:00:52.000'
+go -m bcp > /home/sybase/db_backups/cp_ev_event_to_test_jan.csv
+
+SELECT reference_num, service_type, shipper_num, convert(varchar(50),conv_time_date,121) as conv_time_date, employee_num, status, convert(varchar(50),scan_time_date,121) as scan_time_date, terminal_num
+, pickup_shipper_num, postal_code, additional_serv_flag, mod10b_fail_flag, multiple_barcode_flag, multiple_shipper_flag
+, comments_flag, convert(varchar(50),inserted_on_cons,121) as inserted_on_cons, convert(varchar(50),updated_on_cons,121) as updated_on_cons
+FROM cpscan.dbo.tttl_ev_event noholdlock 
+where inserted_on_cons >= '2019-02-01' and inserted_on_cons < '2019-03-01'
+go -m bcp > /home/sybase/db_backups/cp_ev_event_to_test_feb.csv
+
+SELECT reference_num, service_type, shipper_num, convert(varchar(50),conv_time_date,121) as conv_time_date, employee_num, status, convert(varchar(50),scan_time_date,121) as scan_time_date, terminal_num
+, pickup_shipper_num, postal_code, additional_serv_flag, mod10b_fail_flag, multiple_barcode_flag, multiple_shipper_flag
+, comments_flag, convert(varchar(50),inserted_on_cons,121) as inserted_on_cons, convert(varchar(50),updated_on_cons,121) as updated_on_cons
+FROM cpscan.dbo.tttl_ev_event noholdlock 
+where inserted_on_cons >= '2019-03-01' and inserted_on_cons < '2019-04-01'
+go -m bcp > /home/sybase/db_backups/cp_ev_event_to_test_mar.csv
+
+SELECT reference_num, service_type, shipper_num, convert(varchar(50),conv_time_date,121) as conv_time_date, employee_num, status, convert(varchar(50),scan_time_date,121) as scan_time_date, terminal_num
+, pickup_shipper_num, postal_code, additional_serv_flag, mod10b_fail_flag, multiple_barcode_flag, multiple_shipper_flag
+, comments_flag, convert(varchar(50),inserted_on_cons,121) as inserted_on_cons, convert(varchar(50),updated_on_cons,121) as updated_on_cons
+FROM cpscan.dbo.tttl_ev_event noholdlock 
+where inserted_on_cons >= '2019-04-01' and inserted_on_cons < '2019-05-01'
+go -m bcp > /home/sybase/db_backups/cp_ev_event_to_test_apr.csv
+
+SELECT reference_num, service_type, shipper_num, convert(varchar(50),conv_time_date,121) as conv_time_date, employee_num, status, convert(varchar(50),scan_time_date,121) as scan_time_date, terminal_num
+, pickup_shipper_num, postal_code, additional_serv_flag, mod10b_fail_flag, multiple_barcode_flag, multiple_shipper_flag
+, comments_flag, convert(varchar(50),inserted_on_cons,121) as inserted_on_cons, convert(varchar(50),updated_on_cons,121) as updated_on_cons
+FROM lmscan.dbo.tttl_ev_event noholdlock 
+where inserted_on_cons >= '2019-01-01' and inserted_on_cons < '2019-02-01'
+go -m bcp > /home/sybase/db_backups/lm_ev_event_to_test_jan.csv
+
+SELECT reference_num, service_type, shipper_num, convert(varchar(50),conv_time_date,121) as conv_time_date, employee_num, status, convert(varchar(50),scan_time_date,121) as scan_time_date, terminal_num
+, pickup_shipper_num, postal_code, additional_serv_flag, mod10b_fail_flag, multiple_barcode_flag, multiple_shipper_flag
+, comments_flag, convert(varchar(50),inserted_on_cons,121) as inserted_on_cons, convert(varchar(50),updated_on_cons,121) as updated_on_cons
+FROM lmscan.dbo.tttl_ev_event noholdlock 
+where inserted_on_cons >= '2019-02-01' and inserted_on_cons < '2019-03-01'
+go -m bcp > /home/sybase/db_backups/lm_ev_event_to_test_feb.csv
+
+SELECT reference_num, service_type, shipper_num, convert(varchar(50),conv_time_date,121) as conv_time_date, employee_num, status, convert(varchar(50),scan_time_date,121) as scan_time_date, terminal_num
+, pickup_shipper_num, postal_code, additional_serv_flag, mod10b_fail_flag, multiple_barcode_flag, multiple_shipper_flag
+, comments_flag, convert(varchar(50),inserted_on_cons,121) as inserted_on_cons, convert(varchar(50),updated_on_cons,121) as updated_on_cons
+FROM lmscan.dbo.tttl_ev_event noholdlock 
+where inserted_on_cons >= '2019-03-01' and inserted_on_cons < '2019-04-01'
+go -m bcp > /home/sybase/db_backups/lm_ev_event_to_test_mar.csv
+
+SELECT reference_num, service_type, shipper_num, convert(varchar(50),conv_time_date,121) as conv_time_date, employee_num, status, convert(varchar(50),scan_time_date,121) as scan_time_date, terminal_num
+, pickup_shipper_num, postal_code, additional_serv_flag, mod10b_fail_flag, multiple_barcode_flag, multiple_shipper_flag
+, comments_flag, convert(varchar(50),inserted_on_cons,121) as inserted_on_cons, convert(varchar(50),updated_on_cons,121) as updated_on_cons
+FROM lmscan.dbo.tttl_ev_event noholdlock 
+where inserted_on_cons >= '2019-04-01' and inserted_on_cons < '2019-05-01'
+go -m bcp > /home/sybase/db_backups/lm_ev_event_to_test_apr.csv
+
+-----------------------------------------------------------------
+
+SELECT reference_num, service_type, shipper_num, convert(varchar(50),conv_time_date,121) as conv_time_date, employee_num, status, convert(varchar(50),scan_time_date,121) as scan_time_date, terminal_num
+, pickup_shipper_num, postal_code, additional_serv_flag, mod10b_fail_flag, multiple_barcode_flag, multiple_shipper_flag
+, comments_flag, convert(varchar(50),inserted_on_cons,121) as inserted_on_cons, convert(varchar(50),updated_on_cons,121) as updated_on_cons
+FROM lmscan.dbo.tttl_ev_event noholdlock 
+where inserted_on_cons >= '2019-02-02' and inserted_on_cons < '2019-04-01'
+\bcp -S CPSYBTEST lmscan.dbo.tttl_ev_event_new
+
+SELECT reference_num, service_type, shipper_num, convert(varchar(50),conv_time_date,121) as conv_time_date, employee_num, status, convert(varchar(50),scan_time_date,121) as scan_time_date, terminal_num
+, pickup_shipper_num, postal_code, additional_serv_flag, mod10b_fail_flag, multiple_barcode_flag, multiple_shipper_flag
+, comments_flag, convert(varchar(50),inserted_on_cons,121) as inserted_on_cons, convert(varchar(50),updated_on_cons,121) as updated_on_cons
+FROM cpscan.dbo.tttl_ev_event noholdlock 
+where inserted_on_cons >= '2019-02-01' and inserted_on_cons < '2019-03-01'
+\bcp -S CPSYBTEST cpscan.dbo.tttl_ev_event_new
+
+SELECT reference_num, service_type, shipper_num, convert(varchar(50),conv_time_date,121) as conv_time_date, employee_num, status, convert(varchar(50),scan_time_date,121) as scan_time_date, terminal_num
+, pickup_shipper_num, postal_code, additional_serv_flag, mod10b_fail_flag, multiple_barcode_flag, multiple_shipper_flag
+, comments_flag, convert(varchar(50),inserted_on_cons,121) as inserted_on_cons, convert(varchar(50),updated_on_cons,121) as updated_on_cons
+FROM cpscan.dbo.tttl_ev_event noholdlock 
+where inserted_on_cons >= '2019-03-01' and inserted_on_cons < '2019-04-01'
+\bcp -S CPSYBTEST cpscan.dbo.tttl_ev_event_new
+
+SELECT reference_num, service_type, shipper_num, convert(varchar(50),conv_time_date,121) as conv_time_date, employee_num, status, convert(varchar(50),scan_time_date,121) as scan_time_date, terminal_num
+, pickup_shipper_num, postal_code, additional_serv_flag, mod10b_fail_flag, multiple_barcode_flag, multiple_shipper_flag
+, comments_flag, convert(varchar(50),inserted_on_cons,121) as inserted_on_cons, convert(varchar(50),updated_on_cons,121) as updated_on_cons
+FROM cpscan.dbo.tttl_ev_event noholdlock 
+where conv_time_date = '2019-04-12 11:47:28.000' and employee_num='E43343' and shipper_num='42704596' 
+and rtrim(service_type)+rtrim(shipper_num)+rtrim(reference_num) = 'D427045960000000125002'
+\bcp -S CPSYBTEST cpscan.dbo.tttl_ev_event
+
+select top 1 conv_time_date, employee_num, delivery_rec_num, multiple_del_rec_flag, manual_entry_flag, consignee_name, consignee_num, consignee_unit_number_name, consignee_street_number, consignee_street_name, consignee_more_address, consignee_city, consignee_postal_code, residential_flag, inserted_on_cons, updated_on_cons, signature
+from cpscan..tttl_dr_delivery_record 
+where conv_time_date = '2019-04-12 11:47:28.000' and employee_num='E43343' 
+\bcp -S CPSYBTEST cpscan.dbo.tttl_dr_delivery_record
+
+-------------------------------------------------------------------
+
+
+/opt/sap/OCS-16_0/bin/bcp cpscan..tttl_ev_event in /home/sybase/db_backups/cp_ev_event_to_test_jan.csv -c -t"#" -S CPSYBTEST -Usa -Ps9b2s3 -m9999999 --12h 30m for 12415692 rows
+/opt/sap/OCS-16_0/bin/bcp cpscan..tttl_ev_event in /home/sybase/db_backups/cp_ev_event_to_test_feb.csv -c -t"#" -S CPSYBTEST -Usa -Ps9b2s3 -m9999999
+/opt/sap/OCS-16_0/bin/bcp cpscan..tttl_ev_event in /home/sybase/db_backups/cp_ev_event_to_test_apr.csv -c -t"#" -S CPSYBTEST -Usa -Ps9b2s3 -m9999999 --
+/opt/sap/OCS-16_0/bin/bcp lmscan..tttl_ev_event in /home/sybase/db_backups/lm_ev_event_to_test_jan.csv -c -t"#" -S CPSYBTEST -Usa -Ps9b2s3 -m9999999
+/opt/sap/OCS-16_0/bin/bcp lmscan..tttl_ev_event in /home/sybase/db_backups/lm_ev_event_to_test_feb.csv -c -t"#" -S CPSYBTEST -Usa -Ps9b2s3 -m9999999
+/opt/sap/OCS-16_0/bin/bcp lmscan..tttl_ev_event in /home/sybase/db_backups/lm_ev_event_to_test_mar.csv -c -t"#" -S CPSYBTEST -Usa -Ps9b2s3 -m9999999
+/opt/sap/OCS-16_0/bin/bcp lmscan..tttl_ev_event in /home/sybase/db_backups/lm_ev_event_to_test_apr.csv -c -t"#" -S CPSYBTEST -Usa -Ps9b2s3 -m9999999 --
+
 select * from systimeranges
 go -m csv 2>/dev/null >"/cygdrive/c/Users/rafael_leandro/TFI Courier/Applications Development & DBA - Database Administration/Documentation/Sybase/CPDB1/systimeranges.csv"
 
@@ -26,6 +131,9 @@ from sysobjects o
 where type = 'U'
 order by mbs desc
 \bcp -S CPDB1 dba.dbo.tbl_growth
+
+select * from tempdb5.dbo.lmscan_event_march15_new
+\bcp -S CPDB2 tempdb5.dbo.lmscan_event_march15_new
 
 select * from cz_corezone_codes 
 \bcp -S CPSYBTEST lmscan.dbo.cz_corezone_codes
@@ -54,6 +162,21 @@ select * from cz_stop_rate
 select * from cz_user_branch 
 \bcp -S CPSYBTEST lmscan.dbo.cz_user_branch
 
+select reference_num, service_type, shipper_num, conv_time_date, employee_num, status, scan_time_date, terminal_num, pickup_shipper_num, postal_code, additional_serv_flag, mod10b_fail_flag, multiple_barcode_flag, multiple_shipper_flag, comments_flag, inserted_on_cons, updated_on_cons from cpscan..tttl_ev_event where inserted_on_cons >= '2019-01-01'
+\bcp -S CPSYBTEST cpscan.dbo.tttl_ev_event
+select conv_time_date, employee_num, delivery_rec_num, multiple_del_rec_flag, manual_entry_flag, consignee_name, consignee_num, consignee_unit_number_name, consignee_street_number, consignee_street_name, consignee_more_address, consignee_city, consignee_postal_code, residential_flag, inserted_on_cons, updated_on_cons, '' from cpscan..tttl_dr_delivery_record where inserted_on_cons >= '2019-01-01'
+\bcp -S CPSYBTEST cpscan.dbo.tttl_dr_delivery_record
+
+select * from cpscan..employee 
+\bcp -S CPSYBTEST cpscan.dbo.employee
+select * from cpscan..driver_stats 
+\bcp -S CPSYBTEST cpscan.dbo.driver_stats
+
+select * from lmscan..employee 
+\bcp -S CPSYBTEST lmscan.dbo.employee
+select * from lmscan..driver_stats 
+\bcp -S CPSYBTEST lmscan.dbo.driver_stats
+
 select * from cmf_data..tot_tm 
 \bcp -S CPSYBTEST cmf_data.dbo.tot_tm
 select * from cmf_data..tot_pt
@@ -63,3 +186,14 @@ select * from cmf_data_lm..tot_tm
 select * from cmf_data_lm..tot_pt
 \bcp -S CPSYBTEST cmf_data_lm.dbo.tot_pt
 
+
+declare @date datetime
+set @date = (select max(inserted_on_cons) from master..test_lm_ev_event where inserted_on_cons >= '2019-01-01' and inserted_on_cons < '2019-01-06')
+if @date is null set @date='2019-01-01'
+SELECT top 5000 reference_num, service_type, shipper_num, convert(varchar(50),conv_time_date,121) as conv_time_date, employee_num, status, convert(varchar(50),scan_time_date,121) as scan_time_date, terminal_num
+, pickup_shipper_num, postal_code, additional_serv_flag, mod10b_fail_flag, multiple_barcode_flag, multiple_shipper_flag
+, comments_flag, convert(varchar(50),inserted_on_cons,121) as inserted_on_cons, convert(varchar(50),updated_on_cons,121) as updated_on_cons
+FROM lmscan.dbo.tttl_ev_event noholdlock 
+where inserted_on_cons >= @date
+\bcp -S CPSYBTEST lmscan.dbo.tttl_ev_event
+go

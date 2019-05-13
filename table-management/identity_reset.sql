@@ -1,0 +1,1 @@
+sp_chgattribute my_table, 'identity_burn_max', 0, '0'

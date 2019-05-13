@@ -11,7 +11,7 @@ exec sp_adduser N'sukhmanbir_kaur', N'sukhmanbir_kaur', N'public'
 GO
 --granting permissions to role dynamically to all tables and views
 declare grantPermission scroll cursor
-for select name from sysobjects where type ='U' or type = 'V' 
+for select name from sysobjects --where type ='U' or type = 'V' 
 go
 declare @temp varchar(255)
 declare @query varchar(255)
@@ -20,7 +20,7 @@ fetch next from grantPermission into @temp
 
 while @@fetch_status=0
 begin
- select @query = "grant insert,delete,update,select on " + @temp + " to developer_write"
+ select @query = "grant all on " + @temp + " to developers"
  execute (@query)
  fetch next from grantPermission into @temp
 end
@@ -54,9 +54,9 @@ FROM
 				ON u.suid = a.altsuid 
 					LEFT JOIN master..syslogins o 
 					ON a.suid = o.suid 
-WHERE
-	u.suid != -2 AND
-	u.uid != u.gid AND
+WHERE 1=1
+	AND u.suid != -2 
+	AND u.uid != u.gid 
 	(u.name = 'sukhmanbir_kaur' or l.name='sukhmanbir_kaur') --provide user name here
 ORDER BY
 	u.name

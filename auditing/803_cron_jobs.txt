@@ -1,0 +1,7 @@
+Make sure the cron jobs to cleanup and consolidate data and send the weekly report are in place.
+Also, make sure mutt is installed and configured on the server that will send the weekly mail report
+
+###Weekly Audit Report Emailed directly to Frank Orourke
+00 03 * * 1 /opt/sap/cron_scripts/weekly_audit_rpt.pl > /opt/sap/cron_scripts/cron_logs/weekly_audit_rpt.log 2>&1
+15 02,05,08,13,16,20,23 * * * /opt/sap/cron_scripts/switch_audit_table.pl > /opt/sap/cron_scripts/cron_logs/switch_audit_table.log 2>&1
+##

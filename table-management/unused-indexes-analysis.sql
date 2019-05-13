@@ -60,16 +60,19 @@ ORDER BY
 go
 
 
-select DB = convert(char(20), db_name()),
-TableName = convert(char(20), object_name(i.id, db_id())),
-IndexName = convert(char(20),i.name),
+select DB = db_name(),
+TableName = object_name(i.id, db_id()),
+IndexName = i.name,
 IndID = i.indid
+,a.UsedCount 
 from master..monOpenObjectActivity a, 
 sysindexes i
-where a.ObjectID =* i.id
-and a.IndexID =* i.indid
+where a.ObjectID = i.id
+and a.IndexID = i.indid
 and (a.UsedCount = 0 or a.UsedCount is NULL)
 and i.indid > 0
 and i.id > 99 -- No system tables
+--and db_name()='svp_cp'
+and object_name(i.id, db_id())='svp_parcel'
 order by 2, 4 asc
 go

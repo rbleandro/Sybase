@@ -37,3 +37,7 @@ select db_name(dbid),* from master..syslogshold --check the syslogshold internal
 go
 exec sp_config_rep_agent cmf_data_lm,disable --if you performed a dump/load operation to create the database and the origin database was being replicated, disable the replication agent after the load
 go
+
+
+DBCC DBREPAIR(cpscan, fixlogfreespace, scanlogchain , 1) -- use this to recalculate log free space. This can be useful when you're trying to use the "alter database log off" command.
+go

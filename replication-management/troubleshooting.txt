@@ -27,9 +27,12 @@ resume connection to CPDB4.canada_post skip transaction
 resume connection to CPIQ.svp_cp_iq_conn1 execute transaction
 resume connection to CPDB1.svp_cp execute transaction
 resume connection to CPDB4.svp_cp execute transaction
+resume connection to CPDB4.cmf_data_lm 
+resume connection to CPDB4.cpscan skip transaction
 
 suspend connection to CPDB1.svp_cp
 suspend connection to CPIQ.svp_cp_iq_conn1
+suspend connection to CPDB4.cmf_data_lm 
 
 -- to resume connection retrying the bad command
 resume connection to CPDB1.cmf_data_lm execute transaction
@@ -59,7 +62,12 @@ alter connection to  CPDB1.svp_cp for replicate table named svp_parcel set dsi_c
 alter connection to  CPDB1.lmscan for replicate table named tttl_lo_linehaul_outbound set dsi_command_convert to 'i2di,u2di'
 alter connection to  CPDB1.lmscan for replicate table named tttl_lo_linehaul_outbound set dsi_command_convert to 'none'
 alter connection to  CPIQ.svp_cp_iq_conn1 for replicate table named svp_parcel set dsi_command_convert to 'i2di,u2di'
+alter connection to  CPDB4.cmf_data_lm for replicate table named waybill_prefix set dsi_command_convert to 'i2di,u2di'
+
+alter connection to  CPDB4.lmscan for replicate table named GeoCoordinate set dsi_command_convert to 'i2di,u2di'
+alter connection to  CPDB4.lmscan for replicate table named GeoCoordinate set dsi_command_convert to 'none'
+alter connection to  CPDB4.cmf_data_lm for replicate table named waybill_prefix set dsi_command_convert to 'none'
 
 --to rollback changes to the command conversion behavior
 alter connection to  CPDB4.svp_cp for replicate table named svp_parcel set dsi_command_convert to 'none'
-
+alter connection to  CPIQ.svp_cp_iq_conn1 for replicate table named DBA.cp_svp_parcel set dsi_command_convert to 'none'
