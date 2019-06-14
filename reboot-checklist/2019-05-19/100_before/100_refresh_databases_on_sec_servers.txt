@@ -1,0 +1,1 @@
+/opt/sap/cron_scripts/dump_databases.pl > /opt/sap/cron_scripts/cron_logs/dump_databases.log 2>&1

@@ -10,7 +10,7 @@ where 1=2')
 end
 go
 declare @daytosubtract tinyint
-set @daytosubtract = 0
+set @daytosubtract = 3
 
 truncate table tempdb7..tbl_space
 
@@ -303,14 +303,42 @@ union all
 select count(*) from lmscan..tttl_dr_delivery_record where inserted_on_cons >= convert(datetime,convert(date,getdate()))
 go
 
-select count(*) from cpscan..PictureDataCapture where updated_on_cons < dateadd(yy,-3,getdate()) 
+select max(datalength(signature))
+--,updated_on_cons 
+from cpscan..tttl_dr_delivery_record where updated_on_cons < dateadd(yy,-3,getdate()) 
+--and datalength(signature) > 4158 
+--group by updated_on_cons
+go--32446
+select max(datalength(signature)),updated_on_cons from cpscan..tttl_dr_delivery_record where inserted_on_cons >= convert(datetime,convert(date,dateadd(dd,-0,getdate()))) group by updated_on_cons--138678
+go
+select top 1 signature, datalength(signature),updated_on_cons from cpscan..tttl_dr_delivery_record where updated_on_cons < dateadd(hh,-26200,getdate()) and datalength(signature) > 0 order by datalength(signature) desc
+go
+select top 1 signature, datalength(signature) from cpscan..tttl_dr_delivery_record where updated_on_cons < dateadd(yy,-3,getdate()) and datalength(signature) > 1 and signature is not null --order by updated_on_cons
+union all 
+select top 1 signature, datalength(signature) from lmscan..tttl_dr_delivery_record where updated_on_cons < dateadd(yy,-3,getdate()) and datalength(signature) > 1 and signature is not null --order by updated_on_cons
 union all
-select count(*) from cpscan..PictureDataCapture where updated_on_cons >= convert(datetime,convert(date,getdate())) 
+select top 1 signature, datalength(signature) from cpscan..tttl_dr_delivery_record where inserted_on_cons >= convert(datetime,convert(date,dateadd(dd,-0,getdate()))) and signature is not null --order by inserted_on_cons
+union all 
+select top 1 signature, datalength(signature) from lmscan..tttl_dr_delivery_record where inserted_on_cons >= convert(datetime,convert(date,dateadd(dd,-2,getdate()))) and signature is not null --order by inserted_on_cons
+go
+
+select count(*) from cpscan..PictureDataCapture where updated_on_cons < dateadd(yy,-3,getdate()) 
 union all
 select count(*) from lmscan..PictureDataCapture where updated_on_cons < dateadd(yy,-3,getdate()) 
 union all
+select count(*) from cpscan..PictureDataCapture where updated_on_cons >= convert(datetime,convert(date,getdate())) 
+union all
 select count(*) from lmscan..PictureDataCapture where updated_on_cons >= convert(datetime,convert(date,getdate())) 
 go
+select top 1 PDC_picture, datalength(PDC_picture) from cpscan..PictureDataCapture where updated_on_cons < dateadd(yy,-3,getdate()) 
+union all
+select top 1 PDC_picture, datalength(PDC_picture) from lmscan..PictureDataCapture where updated_on_cons < dateadd(yy,-3,getdate()) 
+union all
+select top 1 PDC_picture, datalength(PDC_picture) from cpscan..PictureDataCapture where updated_on_cons >= convert(datetime,convert(date,getdate())) 
+union all
+select top 1 PDC_picture, datalength(PDC_picture) from lmscan..PictureDataCapture where updated_on_cons >= convert(datetime,convert(date,getdate())) 
+go
+
 select count(*) from cpscan..COSDataCapture where updated_on_cons < dateadd(yy,-3,getdate()) 
 union all
 select count(*) from cpscan..COSDataCapture where updated_on_cons >= convert(datetime,convert(date,getdate())) 
@@ -334,3 +362,11 @@ exec lmscan..sp_estspace @table_name ='tttl_ev_event', @no_of_rows =1 --0.07
 go
 select top 1 * from lmscan..tttl_dr_delivery_record
 GO
+exec cpscan..sp_help tttl_dr_delivery_record
+go
+exec cpscan..sp_helpsegment_custom "ma_dr_seg"
+go
+exec cpscan..sp_helpsegment_custom "image_seg"
+go
+ttttl_dr_delivery_record_2092583512
+tttl_dr_delivery_record_2092583512

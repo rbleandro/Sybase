@@ -1,4 +1,4 @@
-use sort_data
+use cpscan
 go
 CREATE OR REPLACE PROCEDURE dbo.sp_helpsegment_custom
 @segname varchar(255) = NULL		/* segment name */

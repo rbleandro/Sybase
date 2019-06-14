@@ -1,27 +1,29 @@
 exec sp_configure 'auditing',1
 go
+exec sp_configure 'audit table'
+go
 exec sp_displayaudit
 go
 
-exec sybsecurity..sp_spaceused sysaudits_02
+exec sybsecurity..sp_spaceused sysaudits_08
 go
 exec sybsecurity..sp_spaceused sysaudits
 go
 exec sybsecurity..sp_help sysaudits
 go
-exec sybsecurity..sp_helpsegment "aud_seg_06"
+exec sybsecurity..sp_helpsegment_custom "aud_seg_08"
 go
 exec sybsecurity..sp_helpsegment_custom "default" --
 go
 --truncate table sybsecurity..sysaudits_06
 go
-select top 1000 * from sybsecurity..sysaudits_02 where loginname = 'lm_process1'
+select top 1000 * from sybsecurity..sysaudits_08 where loginname = 'lm_process1'
 go
-select distinct ed.event, ed.description from sybsecurity..sysaudits_02 s inner join sybsecurity..event_descriptions ed on s.event=ed.event where loginname ='alex_vasilenco' and ed.event not in (62)
+select distinct ed.event, ed.description from sybsecurity..sysaudits_08 s inner join sybsecurity..event_descriptions ed on s.event=ed.event where loginname ='alex_vasilenco' and ed.event not in (62)
 go
-select distinct loginname from sybsecurity..sysaudits_02 s --inner join sybsecurity..event_descriptions ed on s.event=ed.event where loginname ='alex_vasilenco' and ed.event not in (62)
+select distinct loginname from sybsecurity..sysaudits_08 s --inner join sybsecurity..event_descriptions ed on s.event=ed.event where loginname ='alex_vasilenco' and ed.event not in (62)
 go
-select distinct s.objname, ed.event, ed.description from sybsecurity..sysaudits_02 s inner join sybsecurity..event_descriptions ed on s.event=ed.event where loginname ='lm_process1'
+select distinct s.objname, ed.event, ed.description from sybsecurity..sysaudits_08 s inner join sybsecurity..event_descriptions ed on s.event=ed.event where loginname ='lm_process1'
 --select top 10 * from sybsecurity..sysaudits_03 where loginname = 'lm_process1' order by eventtime desc --2019-05-11 12:57:05.626
 go
 

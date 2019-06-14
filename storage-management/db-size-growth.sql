@@ -1,5 +1,16 @@
 declare @daytosubtract tinyint
-set @daytosubtract = 0
+set @daytosubtract = 2
+
+select  sum(d1.data_used_MB - d2.data_used_MB) as TotalGrowth 
+,d1.SnapId,d2.SnapId,d1.SnapTime,d2.SnapTime,d1.db_name
+from dba..db_space d1 inner join dba..db_space d2 on d1.db_name=d2.db_name
+where d1.SnapId=d2.SnapId+1
+--and d1.SnapId = (select max(SnapId)-@daytosubtract from dba..db_space where db_name=d1.db_name)
+and d1.db_name in ('cpscan','lmscan')
+group by  d1.SnapId,d2.SnapId,d1.SnapTime,d2.SnapTime,d1.db_name --362.849
+go
+declare @daytosubtract tinyint
+set @daytosubtract = 4
 
 select top 1 d1.db_name,d1.data_used_MB - d2.data_used_MB as 'growth(MB)' ,d1.SnapId,d2.SnapId,d1.SnapTime,d2.SnapTime
 from dba..db_space d1 inner join dba..db_space d2 on d1.db_name=d2.db_name
@@ -131,6 +142,15 @@ select top 1 d1.db_name,d1.data_used_MB - d2.data_used_MB as 'growth(MB)' ,d1.Sn
 from dba..db_space d1 inner join dba..db_space d2 on d1.db_name=d2.db_name
 where d1.SnapId=d2.SnapId+1
 and d1.SnapId = (select max(SnapId)-@daytosubtract from dba..db_space where db_name=d1.db_name)
+and d1.db_name='sort_data'
+--order by d1.db_name,d1.SnapId desc
+
+union
+
+select top 1 d1.db_name,d1.data_used_MB - d2.data_used_MB as 'growth(MB)' ,d1.SnapId,d2.SnapId,d1.SnapTime,d2.SnapTime
+from dba..db_space d1 inner join dba..db_space d2 on d1.db_name=d2.db_name
+where d1.SnapId=d2.SnapId+1
+and d1.SnapId = (select max(SnapId)-@daytosubtract from dba..db_space where db_name=d1.db_name)
 and d1.db_name='liberty_db'
 --order by d1.db_name,d1.SnapId desc
 
@@ -211,8 +231,31 @@ select top 1 d1.db_name,d1.data_used_MB - d2.data_used_MB as 'growth(MB)' ,d1.Sn
 from dba..db_space d1 inner join dba..db_space d2 on d1.db_name=d2.db_name
 where d1.SnapId=d2.SnapId+1
 and d1.SnapId = (select max(SnapId)-@daytosubtract from dba..db_space where db_name=d1.db_name)
+and d1.db_name='canada_post'
+
+union
+
+select top 1 d1.db_name,d1.data_used_MB - d2.data_used_MB as 'growth(MB)' ,d1.SnapId,d2.SnapId,d1.SnapTime,d2.SnapTime
+from dba..db_space d1 inner join dba..db_space d2 on d1.db_name=d2.db_name
+where d1.SnapId=d2.SnapId+1
+and d1.SnapId = (select max(SnapId)-@daytosubtract from dba..db_space where db_name=d1.db_name)
 and d1.db_name='scan_compliance'
 
+union
+
+select top 1 d1.db_name,d1.data_used_MB - d2.data_used_MB as 'growth(MB)' ,d1.SnapId,d2.SnapId,d1.SnapTime,d2.SnapTime
+from dba..db_space d1 inner join dba..db_space d2 on d1.db_name=d2.db_name
+where d1.SnapId=d2.SnapId+1
+and d1.SnapId = (select max(SnapId)-@daytosubtract from dba..db_space where db_name=d1.db_name)
+and d1.db_name='rate_update'
+
+union
+
+select top 1 d1.db_name,d1.data_used_MB - d2.data_used_MB as 'growth(MB)' ,d1.SnapId,d2.SnapId,d1.SnapTime,d2.SnapTime
+from dba..db_space d1 inner join dba..db_space d2 on d1.db_name=d2.db_name
+where d1.SnapId=d2.SnapId+1
+and d1.SnapId = (select max(SnapId)-@daytosubtract from dba..db_space where db_name=d1.db_name)
+and d1.db_name='termexp'
 --order by d1.db_name,d1.SnapId desc
 go
 

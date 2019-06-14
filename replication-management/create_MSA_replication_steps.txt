@@ -3,24 +3,24 @@
 --============================================================================================================================================================================================================
 in Primary db (DBARTISAN):
 --==============
-use lmscan
+use sort_data
 go
-sp_reptostandby lmscan,'all'
+sp_reptostandby sort_data,'all'
 go
-sp_setrepdbmode lmscan,uds,'off' --<-- Keeping it off
+sp_setrepdbmode sort_data,uds,'off' --<-- Keeping it off
 go
-sp_config_rep_agent lmscan,disable --this will return an error if replication has never been configured for the database
+sp_config_rep_agent sort_data,disable --this will return an error if replication has never been configured for the database
 go
 --====
 -- In Secondary db
 --===
-use lmscan
+use sort_data
 go
-sp_reptostandby lmscan,'all'
+sp_reptostandby sort_data,'all'
 go
-sp_setrepdbmode lmscan,uds,'off' --<-- Keeping it off
+sp_setrepdbmode sort_data,uds,'off' --<-- Keeping it off
 go
-sp_config_rep_agent lmscan,disable --this will return an error if replication has never been configured for the database
+sp_config_rep_agent sort_data,disable --this will return an error if replication has never been configured for the database
 go
 --=========================================================================END OF INITIAL CHECK===================================================================================================================================
 
@@ -30,36 +30,36 @@ go
 --Configure replication for all databases through rs_init. The rs_init will create the threads for the log reader agent and create the logical connection to the specified database.
 
 cd /opt/sybase/REP-15_5/install/
-./rs_init -r /opt/sybase/cron_scripts/replication_setup/CPDB2_lmscan_setupdb.rs
-./rs_init -r /opt/sybase/cron_scripts/replication_setup/CPDB1_lmscan_setupdb.rs
-./rs_init -r /opt/sybase/cron_scripts/replication_setup/CPDB4_lmscan_setupdb.rs
+./rs_init -r /opt/sybase/cron_scripts/replication_setup/CPDB2_sort_data_setupdb.rs
+./rs_init -r /opt/sybase/cron_scripts/replication_setup/CPDB1_sort_data_setupdb.rs
+./rs_init -r /opt/sybase/cron_scripts/replication_setup/CPDB4_sort_data_setupdb.rs
 
 
 --=================
 -- In PDB
 --=================
-use lmscan
+use sort_data
 go
-sp_stop_rep_agent lmscan
+sp_stop_rep_agent sort_data
 go
-sp_config_rep_agent lmscan, send_warm_standby_xacts,true
+sp_config_rep_agent sort_data, send_warm_standby_xacts,true
 go
---sp_config_rep_agent lmscan, 'ltl metadata reduction', 'true'
+--sp_config_rep_agent sort_data, 'ltl metadata reduction', 'true'
 go
-sp_start_rep_agent lmscan
+sp_start_rep_agent sort_data
 go
 --=================
 -- In RDB
 --=================
-use lmscan
+use sort_data
 go
-sp_stop_rep_agent lmscan
+sp_stop_rep_agent sort_data
 go
-sp_config_rep_agent lmscan, send_warm_standby_xacts,true
+sp_config_rep_agent sort_data, send_warm_standby_xacts,true
 go
---sp_config_rep_agent lmscan, 'ltl metadata reduction', 'true'
+--sp_config_rep_agent sort_data, 'ltl metadata reduction', 'true'
 go
---sp_start_rep_agent lmscan --> DO NOT RESTART THE REPAGENT
+--sp_start_rep_agent sort_data --> DO NOT RESTART THE REPAGENT
 go
 
 --=================
@@ -71,90 +71,90 @@ In PRS:
 --dist_sqt_max_cache_size defines The maximum Stable Queue Transaction (SQT) cache size for the DIST connection.
 --Dynamic SQL allows the Replication Server Data Server Interface (DSI) to prepare dynamic SQL statements at the target user database and to run them repeatedly.
 
-alter connection to CPDB1.lmscan set dsi_compile_enable to 'on'
+alter connection to CPDB1.sort_data set dsi_compile_enable to 'on'
 go
-alter connection to CPDB1.lmscan set dsi_replication_ddl to 'on'
+alter connection to CPDB1.sort_data set dsi_replication_ddl to 'on'
 go
-alter connection to CPDB1.lmscan set dsi_keep_triggers to 'off'
+alter connection to CPDB1.sort_data set dsi_keep_triggers to 'off'
 go
-alter connection to CPDB1.lmscan set dsi_compile_max_cmds to '100000'
+alter connection to CPDB1.sort_data set dsi_compile_max_cmds to '100000'
 go
-alter connection to CPDB1.lmscan set dist_sqt_max_cache_size to '509715200'
+alter connection to CPDB1.sort_data set dist_sqt_max_cache_size to '509715200'
 go
-alter connection to CPDB1.lmscan set dynamic_sql to 'off'
+alter connection to CPDB1.sort_data set dynamic_sql to 'off'
 go
-alter connection to CPDB1.lmscan set dsi_row_count_validation to 'off'
+alter connection to CPDB1.sort_data set dsi_row_count_validation to 'off'
 go
-suspend connection to CPDB1.lmscan
+suspend connection to CPDB1.sort_data
 go
-resume connection to CPDB1.lmscan
+resume connection to CPDB1.sort_data
 go
 
-alter connection to CPDB4.lmscan set dsi_compile_enable to 'on'
+alter connection to CPDB4.sort_data set dsi_compile_enable to 'on'
 go
-alter connection to CPDB4.lmscan set dsi_replication_ddl to 'on'
+alter connection to CPDB4.sort_data set dsi_replication_ddl to 'on'
 go
-alter connection to CPDB4.lmscan set dsi_keep_triggers to 'off'
+alter connection to CPDB4.sort_data set dsi_keep_triggers to 'off'
 go
-alter connection to CPDB4.lmscan set dsi_compile_max_cmds to '100000'
+alter connection to CPDB4.sort_data set dsi_compile_max_cmds to '100000'
 go
-alter connection to CPDB4.lmscan set dist_sqt_max_cache_size to '509715200'
+alter connection to CPDB4.sort_data set dist_sqt_max_cache_size to '509715200'
 go
-alter connection to CPDB4.lmscan set dynamic_sql to 'off'
+alter connection to CPDB4.sort_data set dynamic_sql to 'off'
 go
-alter connection to CPDB4.lmscan set dsi_row_count_validation to 'off'
+alter connection to CPDB4.sort_data set dsi_row_count_validation to 'off'
 go
-suspend connection to CPDB4.lmscan
+suspend connection to CPDB4.sort_data
 go
-resume connection to CPDB4.lmscan
+resume connection to CPDB4.sort_data
 go
 
 --==================
 
-create database replication definition CPDB2_lmscan_dbrep
-with primary at CPDB2.lmscan
+create database replication definition CPDB2_sort_data_dbrep
+with primary at CPDB2.sort_data
 replicate DDL
 replicate system procedures
 --replicate SQLDML --<--- Not using this for now
 
-define subscription CPDB2_lmscan_dbsub
-for database replication definition CPDB2_lmscan_dbrep
-with primary at CPDB2.lmscan
-with replicate at CPDB1.lmscan
+define subscription CPDB2_sort_data_dbsub
+for database replication definition CPDB2_sort_data_dbrep
+with primary at CPDB2.sort_data
+with replicate at CPDB1.sort_data
 subscribe to truncate table
 use dump marker
 
-validate subscription CPDB2_lmscan_dbsub
-for database replication definition CPDB2_lmscan_dbrep
-with primary at CPDB2.lmscan
-with replicate at CPDB1.lmscan
+validate subscription CPDB2_sort_data_dbsub
+for database replication definition CPDB2_sort_data_dbrep
+with primary at CPDB2.sort_data
+with replicate at CPDB1.sort_data
 
-define subscription CPDB4_lmscan_dbsub
-for database replication definition CPDB2_lmscan_dbrep
-with primary at CPDB2.lmscan
-with replicate at CPDB4.lmscan
+define subscription CPDB4_sort_data_dbsub
+for database replication definition CPDB2_sort_data_dbrep
+with primary at CPDB2.sort_data
+with replicate at CPDB4.sort_data
 subscribe to truncate table
 use dump marker
 
-validate subscription CPDB4_lmscan_dbsub
-for database replication definition CPDB2_lmscan_dbrep
-with primary at CPDB2.lmscan
-with replicate at CPDB4.lmscan
+validate subscription CPDB4_sort_data_dbsub
+for database replication definition CPDB2_sort_data_dbrep
+with primary at CPDB2.sort_data
+with replicate at CPDB4.sort_data
 
 
 
 --=================
 in RDB
 --=================
-use lmscan
+use sort_data
 go
 dbcc settrunc(ltm,ignore) -- make sure that you disable repagent on the replicate, after the load
 go
-sp_dropuser N'lmscan_maint'
+sp_dropuser N'sort_data_maint'
 go
-sp_dropalias N'lmscan_maint' --drop alias this is sometimes necessary specially if the database is involved in replication
+sp_dropalias N'sort_data_maint' --drop alias this is sometimes necessary specially if the database is involved in replication
 GO
-sp_addalias N'lmscan_maint', N'dbo' --add the database as dbo for appropriate permissions
+sp_addalias N'sort_data_maint', N'dbo' --add the database as dbo for appropriate permissions
 GO
 select db_name(dbid),* from master..syslogshold -- this should return no results for the affected database
 go
@@ -165,42 +165,42 @@ go
 --Following are the steps to RESYNCH a database by dropping and recreating the subscription
 --============================================================================================================================================================================================================
 
--- drop the current subscription (use the following query after connecting to rssd to confirm the existence of a subscription for the database: select top 10 * from  rs_subscriptions where subname like '%lmscan%')
-drop subscription CPDB4_lmscan_dbsub
-for database replication definition CPDB2_lmscan_dbrep
-with primary at CPDB2.lmscan
-with replicate at CPDB4.lmscan
+-- drop the current subscription (use the following query after connecting to rssd to confirm the existence of a subscription for the database: select top 10 * from  rs_subscriptions where subname like '%sort_data%')
+drop subscription CPDB4_sort_data_dbsub
+for database replication definition CPDB2_sort_data_dbrep
+with primary at CPDB2.sort_data
+with replicate at CPDB4.sort_data
 without purge
 
-drop subscription CPDB2_lmscan_dbsub
-for database replication definition CPDB2_lmscan_dbrep
-with primary at CPDB2.lmscan
-with replicate at CPDB1.lmscan
+drop subscription CPDB2_sort_data_dbsub
+for database replication definition CPDB2_sort_data_dbrep
+with primary at CPDB2.sort_data
+with replicate at CPDB1.sort_data
 without purge
 
-define subscription CPDB4_lmscan_dbsub
-for database replication definition CPDB2_lmscan_dbrep
-with primary at CPDB2.lmscan
-with replicate at CPDB4.lmscan
+define subscription CPDB4_sort_data_dbsub
+for database replication definition CPDB2_sort_data_dbrep
+with primary at CPDB2.sort_data
+with replicate at CPDB4.sort_data
 subscribe to truncate table
 use dump marker
 
-validate subscription CPDB4_lmscan_dbsub
-for database replication definition CPDB2_lmscan_dbrep
-with primary at CPDB2.lmscan
-with replicate at CPDB4.lmscan
+validate subscription CPDB4_sort_data_dbsub
+for database replication definition CPDB2_sort_data_dbrep
+with primary at CPDB2.sort_data
+with replicate at CPDB4.sort_data
 
-define subscription CPDB2_lmscan_dbsub
-for database replication definition CPDB2_lmscan_dbrep
-with primary at CPDB2.lmscan
-with replicate at CPDB1.lmscan
+define subscription CPDB2_sort_data_dbsub
+for database replication definition CPDB2_sort_data_dbrep
+with primary at CPDB2.sort_data
+with replicate at CPDB1.sort_data
 subscribe to truncate table
 use dump marker
 
-validate subscription CPDB2_lmscan_dbsub
-for database replication definition CPDB2_lmscan_dbrep
-with primary at CPDB2.lmscan
-with replicate at CPDB1.lmscan
+validate subscription CPDB2_sort_data_dbsub
+for database replication definition CPDB2_sort_data_dbrep
+with primary at CPDB2.sort_data
+with replicate at CPDB1.sort_data
 
 
 
@@ -209,5 +209,5 @@ with replicate at CPDB1.lmscan
 --================================================================================END OF REPLICATION RESYNCH CONFIG============================================================================================================================
 
 -- if you need to drop repdef
-drop database replication definition CPDB2_lmscan_dbrep
-with primary at CPDB1.lmscan
+drop database replication definition CPDB2_sort_data_dbrep
+with primary at CPDB1.sort_data

@@ -1,0 +1,3 @@
+crontab -l > crontab_backup.txt
+
+crontab -r

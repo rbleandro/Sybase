@@ -1,6 +1,6 @@
 --0.  save the currently locked logins. We'll need to lock them again after the upgrade
-select name into tempdb7..lockedlogins from master..syslogins where status & 2 = 2
-go
+select name into dba..lockedlogins from master..syslogins where status & 2 = 2
+go --28 record(s) affected on 2019-05-16 16:01:41
 --1.  locks all accounts to prevent changes to any databases 
 exec sp_locklogin NULL, "lock", sa_role
 go
@@ -23,7 +23,7 @@ go
 
 --8.  restore the state of the previously locked logins
 declare spidcurs cursor for
-select name from tempdb7..lockedlogins 
+select name from dba..lockedlogins 
 go
 Declare @dbname varchar(50),@str varchar(1000)
 open spidcurs
