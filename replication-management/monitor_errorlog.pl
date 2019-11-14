@@ -1,19 +1,20 @@
 #!/usr/bin/perl -w
 
-###################################################################################
-#Script:   This script monitors sybase server errorlog for critical and fatal     #
-#          errors. It is designed to run every minute and scan the errorlog and   #
-#          send messages when errors are found. It also monitors whether the      #
-#          $server server and Backup server is up                                 #
-#                                                                                 #
-#Author:   Amer Khan                                                              #
-#Revision:                                                                        #
-#Date           Name            Description                                       #
-#---------------------------------------------------------------------------------#
-#01/07/04       Amer Khan       Originally created                                #
-#                                                                                 #
-#02/23/06      Ahsan Ahmed      Modified for email to DBA's and documentation     #  
-###################################################################################
+####################################################################################################################################################################
+#Script:   This script monitors sybase server errorlog for critical and fatal     
+#          errors. It is designed to run every minute and scan the errorlog and   
+#          send messages when errors are found. It also monitors whether the      
+#          $server server and Backup server is up                                 
+#                                                                                 
+#Author:   Amer Khan                                                              
+#Revision:                                                                        
+#Date           Name            Description                                       
+#---------------------------------------------------------------------------------
+#01/07/04       Amer Khan       Originally created                                
+#                                                                                 
+#02/23/06      	Ahsan Ahmed      Modified for email to DBA's and documentation
+#July 26 2019	Rafael Leandro	Installed missing Perl modules. Removed redundant emails. Reviewed search keywords.
+####################################################################################################################################################################
 
 use Date::Calc qw(Today_and_Now Delta_YMDHMS Add_Delta_YMDHMS Delta_DHMS Date_to_Text);
 
@@ -40,7 +41,7 @@ $currSec =sprintf('%02d',((localtime())[0]-1));
 use Date::Calc qw(Today_and_Now Delta_YMDHMS Add_Delta_YMDHMS Delta_DHMS Date_to_Text);
 
 my $today = [Today_and_Now()];
-my @target = split(/,/,`cat /opt/sybase/cron_scripts/lastErrorStamp`); #[2005,1,1,0,0,0];
+my @target = split(/,/,`cat /opt/sybase/cron_scripts/lastErrorStamp`); #[2019,7,26,0,0,0];
 my $target = [@target];
 
 my $delta = Normalize_Delta_YMDHMS($today,$target);
@@ -75,16 +76,16 @@ while (<ERRORLOG>){
       $tooManyErrors += 1;
       $secondLine = $_;
       print "$firstLine$secondLine\n";
-      if(($tooManyErrors < 5 ) && ($firstLine !~ /Deadlock/ || $firstLine !~ /IGNORE/i || $firstLine !~ /Ambiguous/ || $secondLine !~ /IGNORE/i)){
+      if(($tooManyErrors < 5 ) && ($firstLine$secondLine !~ /Deadlock/ || $firstLine$secondLine !~ /IGNORE/i || $firstLine$secondLine !~ /Ambiguous/)){
       `/usr/sbin/sendmail -t -i <<EOF
-To: akhan\@canpar.com,CANPARDatabaseAdministratorsStaffList\@canpar.com,CANPARDBASybaseMobileAlerts\@canpar.com
+To: CANPARDatabaseAdministratorsStaffList\@canpar.com,CANPARDBASybaseMobileAlerts\@canpar.com
 Subject: $server SRS Error Alert
 
 Errors Found In $server Errorlog!!!
 $firstLine$secondLine
 EOF
 `;
-print "*********\nMail Sent To akhan\@canpar.com\n*********\n";
+print "*********\nMail Sent To the DBA team\n*********\n";
       }else{
          if($tooManyErrors == 5){
          `/usr/sbin/sendmail -t -i <<EOF
@@ -103,8 +104,9 @@ print "*********\nMail Sent To DBAs\n*********\n";
    }
    if(/$currDate/){
       if (/$currHour\:$currMin\:/){
-         if((/shutdown/i || /ERROR/ || /SQM_ADD_SEGMENT/ || /cease/ || /Loss detected/ || /Error/i || /sleeping/i || /critically/i || /failed/i || /degradation/i || /deadlock/i || /stack trace/i || /fatal/i || /Warning/i)){
-	    $firstLine = $_;
+         if((/ERROR/ || /SQM_ADD_SEGMENT/ || /cease/ || /Loss detected/ || /sleeping/i || /critically/i || /failed/i || /degradation/i || /deadlock/i || /stack trace/i || /fatal/i || /WARNING/i))
+		 {
+			$firstLine = $_;
             $getNextLine = 1;
          }
       }

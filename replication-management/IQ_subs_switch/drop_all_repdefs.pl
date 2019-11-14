@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 
-my $PRI = 'CPDB1';
-my $SEC = 'CPDB2';
+my $PRI = 'CPDB2';
+my $SEC = 'CPDB1';
 
 print "\nWhat is your old Primary Server? (default: $PRI)...Hit Enter for default or enter new server name now: ";
 chomp ($user_input = <STDIN>);

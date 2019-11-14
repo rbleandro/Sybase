@@ -1,3 +1,21 @@
+select DB = db_name(),
+TableName = object_name(i.id, db_id()),
+IndexName = i.name,
+IndID = i.indid
+,a.UsedCount 
+from master..monOpenObjectActivity a, 
+sysindexes i
+where a.ObjectID = i.id
+and a.IndexID = i.indid
+and (a.UsedCount = 0 or a.UsedCount is NULL)
+and i.indid > 0
+and i.id > 99 -- No system tables
+--and db_name()='svp_cp'
+and object_name(i.id, db_id())='address'
+order by 2, 4 asc
+go
+
+
 declare @low bigint 
 
 SELECT
@@ -57,22 +75,4 @@ WHERE
 	
 ORDER BY
 	index_reserved_kb desc
-go
-
-
-select DB = db_name(),
-TableName = object_name(i.id, db_id()),
-IndexName = i.name,
-IndID = i.indid
-,a.UsedCount 
-from master..monOpenObjectActivity a, 
-sysindexes i
-where a.ObjectID = i.id
-and a.IndexID = i.indid
-and (a.UsedCount = 0 or a.UsedCount is NULL)
-and i.indid > 0
-and i.id > 99 -- No system tables
---and db_name()='svp_cp'
-and object_name(i.id, db_id())='svp_parcel'
-order by 2, 4 asc
 go

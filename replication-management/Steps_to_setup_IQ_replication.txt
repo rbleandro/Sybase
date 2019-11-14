@@ -31,55 +31,37 @@ GRANT EXECUTE ANY PROCEDURE TO cmf_data_lm_rep1 WITH NO ADMIN OPTION;
 GRANT LOAD ANY TABLE TO cmf_data_lm_rep1 WITH NO ADMIN OPTION;
 COMMENT ON USER cmf_data_lm_rep1 IS 'User is used for IQ replication from cmf_data_lm';
 
-1a- Create user for that database: eg cpscan (For canpar dbs)
-CREATE USER cpscan_rep1 IDENTIFIED BY sybase;
-GRANT ROLE DBA TO cpscan_rep1 WITH NO ADMIN OPTION;
-GRANT ROLE readers TO cpscan_rep1 WITH NO ADMIN OPTION;
-GRANT ROLE PUBLIC TO cpscan_rep1 WITH NO ADMIN OPTION;
-GRANT ROLE dbo TO cpscan_rep1 WITH NO ADMIN OPTION;
-GRANT DELETE ANY TABLE TO cpscan_rep1 WITH NO ADMIN OPTION;
-GRANT INSERT ANY TABLE TO cpscan_rep1 WITH NO ADMIN OPTION;
-GRANT SELECT ANY TABLE TO cpscan_rep1 WITH NO ADMIN OPTION;
-GRANT UPDATE ANY TABLE TO cpscan_rep1 WITH NO ADMIN OPTION;
-GRANT CREATE ANY OBJECT TO cpscan_rep1 WITH NO ADMIN OPTION;
-GRANT EXECUTE ANY PROCEDURE TO cpscan_rep1 WITH NO ADMIN OPTION;
-GRANT TRUNCATE ANY TABLE TO cpscan_rep1 WITH NO ADMIN OPTION;
-GRANT LOAD ANY TABLE TO cpscan_rep1 WITH NO ADMIN OPTION;
-COMMENT ON USER cpscan_rep1 IS 'User is used for IQ replication from cpscan';
-
-CREATE USER cmf_data_rep1 IDENTIFIED BY sybase;
-GRANT ROLE DBA TO cmf_data_rep1 WITH NO ADMIN OPTION;
-GRANT ROLE readers TO cmf_data_rep1 WITH NO ADMIN OPTION;
-GRANT ROLE PUBLIC TO cmf_data_rep1 WITH NO ADMIN OPTION;
-GRANT ROLE lmo TO cmf_data_rep1 WITH NO ADMIN OPTION;
-GRANT DELETE ANY TABLE TO cmf_data_rep1 WITH NO ADMIN OPTION;
-GRANT INSERT ANY TABLE TO cmf_data_rep1 WITH NO ADMIN OPTION;
-GRANT SELECT ANY TABLE TO cmf_data_rep1 WITH NO ADMIN OPTION;
-GRANT UPDATE ANY TABLE TO cmf_data_rep1 WITH NO ADMIN OPTION;
-GRANT TRUNCATE ANY TABLE TO cmf_data_rep1 WITH NO ADMIN OPTION;
-GRANT CREATE ANY OBJECT TO cmf_data_rep1 WITH NO ADMIN OPTION;
-GRANT EXECUTE ANY PROCEDURE TO cmf_data_rep1 WITH NO ADMIN OPTION;
-GRANT LOAD ANY TABLE TO cmf_data_rep1 WITH NO ADMIN OPTION;
-COMMENT ON USER cmf_data_rep1 IS 'User is used for IQ replication from cmf_data_lm';
+1a- Create user for that database: eg rev_hist_lm (For canpar dbs)
+CREATE USER rev_hist_lm_rep1 IDENTIFIED BY sybase;
+GRANT ROLE DBA TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
+GRANT ROLE readers TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
+GRANT ROLE PUBLIC TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
+GRANT ROLE dbo TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
+GRANT DELETE ANY TABLE TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
+GRANT INSERT ANY TABLE TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
+GRANT SELECT ANY TABLE TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
+GRANT UPDATE ANY TABLE TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
+GRANT CREATE ANY OBJECT TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
+GRANT EXECUTE ANY PROCEDURE TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
+GRANT TRUNCATE ANY TABLE TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
+GRANT LOAD ANY TABLE TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
+COMMENT ON USER rev_hist_lm_rep1 IS 'User is used for IQ replication from rev_hist_lm';
 
 2- Create connection for the IQ in SRS for that db
 
-create connection to CPIQ.rev_hist_lm_iq_conn1
+create connection to CPIQ.rev_hist_lm_iq_conn1 
 using profile rs_ase_to_iq;standard
-set username to cpscan_rep1
+set username to rev_hist_lm_rep1
 set password to sybase
-
+go
 
 -- Alter the connection to enable HVAR
-alter connection to CPIQ.rev_hist_iq_conn1 set dsi_compile_enable to 'on'
-alter connection to CPIQ.rev_hist_iq_conn1 set dsi_cmd_batch_size to '65536' 
-alter connection to CPIQ.rev_hist_iq_conn1 set dsi_compile_max_cmds to '200000'
-alter connection to CPIQ.rev_hist_iq_conn1 set dsi_cdb_max_size to '10240'
-suspend connection to CPIQ.rev_hist_iq_conn1
-resume connection to CPIQ.rev_hist_iq_conn1
-
-
-
+alter connection to CPIQ.rev_hist_lm_iq_conn1 set dsi_compile_enable to 'on'
+alter connection to CPIQ.rev_hist_lm_iq_conn1 set dsi_cmd_batch_size to '65536' 
+alter connection to CPIQ.rev_hist_lm_iq_conn1 set dsi_compile_max_cmds to '200000'
+alter connection to CPIQ.rev_hist_lm_iq_conn1 set dsi_cdb_max_size to '10240'
+suspend connection to CPIQ.rev_hist_lm_iq_conn1
+resume connection to CPIQ.rev_hist_lm_iq_conn1
 
 *****************--Example of setting a table for replication to IQ--****************************************
 
@@ -87,82 +69,24 @@ resume connection to CPIQ.rev_hist_iq_conn1
 -- decimal datatype with precision and scale, eg: decimail(6,1) should be replaced with decimal in repdef
 -- All bits should be converted to int in IQ, or replication will stack trace
 
-create replication definition CPDB1_iq_driver_stats_rep
-with primary at CPDB1.cpscan
-with primary table named dbo.'driver_stats'
-with replicate table named dbo.'driver_stats'
+drop replication definition CPDB2_iq_lm_revhst_rep
+
+create replication definition CPDB2_iq_lm_revhst_rep
+with primary at CPDB1.rev_hist_lm
+with primary table named dbo.'revhsth'
+with replicate table named DBA.'cp_revhsth'
 (
-    employee_num             char(6)     ,
-    terminal_num             char(3)     ,
-    conv_time_date           datetime    ,
-    route_num                varchar(5)  ,
-    emp_start_shift_time     char(4)     ,
-    emp_left_terminal_time   char(4)     ,
-    emp_start_del_time       char(4)     ,
-    emp_end_del_time         char(4)     ,
-    emp_start_lunch_time     char(4)     ,
-    emp_end_lunch_time       char(4)     ,
-    emp_start_pickup_time    char(4)     ,
-    emp_end_pickup_time      char(4)     ,
-    emp_start_break1_time    char(4)     ,
-    emp_end_break1_time      char(4)     ,
-    emp_start_break2_time    char(4)     ,
-    emp_end_break2_time      char(4)     ,
-    emp_return_terminal_time char(4)     ,
-    emp_end_shift_time       char(4)     ,
-    emp_regular_hours        smallint    ,
-    emp_overtime_hours       smallint    ,
-    eod_cod_cash             smallmoney  ,
-    eod_cod_cheque           smallmoney  ,
-    eod_cod_dts              smallmoney  ,
-    eod_cod_total_labels     smallmoney  ,
-    num_delivery_stops       smallint    ,
-    num_delivery_recs        smallint    ,
-    num_delivered_packages   smallint    ,
-    num_delivered_cod        smallint    ,
-    num_pickup_recs          smallint    ,
-    num_missed_pickups       smallint    ,
-    num_send_again           smallint    ,
-    num_cod_no_money         smallint    ,
-    num_refused              smallint    ,
-    num_return_to_sender     smallint    ,
-    num_not_home             smallint    ,
-    num_pickup_tags          smallint    ,
-    num_cancel_cod           smallint    ,
-    num_hold_for_pickup      smallint    ,
-    num_cannot_locate        smallint    ,
-    num_split_shipment       smallint    ,
-    num_change_of_address    smallint    ,
-    num_misroute             smallint    ,
-    num_nonattempt           smallint    ,
-    num_return_cod           smallint    ,
-    num_no_sign_required     smallint    ,
-    num_pickup_stops         smallint    ,
-    num_pickup_packages      smallint    ,
-    num_pickup_cod           smallint    ,
-    num_pickup_select        smallint    ,
-    num_pickup_hvr           smallint    ,
-    eod_comments2            varchar(40) ,
-    emp_start_break3_time    char(4)     ,
-    emp_end_break3_time      char(4)     ,
-    inserted_on_cons         datetime    ,
-    updated_on_cons          datetime    ,
-    num_billed_stops         smallint    ,
-    num_billed_pieces        smallint    ,
-    num_pickup_tdd           smallint    ,
-    num_pieces_loaded        smallint    ,
-    num_pieces_trans_in      smallint    ,
-    num_pieces_trans_out     smallint    ,
-    num_delivery_tdd         smallint    
+    columns without NULL specification...
 )	
-primary key ( employee_num,terminal_num,conv_time_date )
+primary key ( PK columns here )
 
 
---Very important, if a table has a keyword such as cube, we need to add quoted and use the following command as well for that table
+--Very important, if a table has a keyword such as cube, we need to add quoted in the column specification.
+--and use the following command as well for that table
+-- alter connection  to CPIQ.lm_revhstf1_iq_conn1 for replicate table named dbo.revhstf1 set dsi_quoted_identifier to 'on'
+-- alter connection  to CPIQ.lm_revhstf1_iq_conn1 set dsi_quoted_identifier to 'on'
 
--- alter connection  to CPIQ.rev_hist_lm_iq_conn1 for replicate table named dbo.driver_stats set dsi_quoted_identifier to 'on'
-
-sp_setreptable driver_stats,'true', owner_on
+sp_setreptable 'dbo.revhsth','true', owner_on --execute this on publisher ASE
 
 -- It would also be best, to guarantee accurate data, that you empty the table before you
 -- create the sub. That way while the data load, all subsequent replicated trans will be queued up
@@ -175,93 +99,30 @@ sp_setreptable driver_stats,'true', owner_on
 -- You must add dbo to table name, since you are replicating with owner_on
 -- Setting i2di for all tables of a connection, can be an issue.
 -- We will need to enable this for each table, and we should not use i2di for tables, which do not have any primary or unique keys!!!
-alter connection to CPIQ.rev_hist_lm_iq_conn1 for replicate table named dbo.***** set dsi_command_convert to 'i2di,u2di'
-alter connection to CPIQ.rev_hist_lm_iq_conn1 set dsi_row_count_validation to 'off' -- This can stay on for the whole connection
-suspend connection to CPIQ.rev_hist_lm_iq_conn1
-resume connection to CPIQ.rev_hist_lm_iq_conn1
+alter connection to CPIQ.rev_hist_lm_iq_conn1 for replicate table named dbo.revhsth set dsi_command_convert to 'i2di,u2di';
+alter connection to CPIQ.rev_hist_lm_iq_conn1 set dsi_row_count_validation to 'off'; -- This can stay on for the whole connection;
+suspend connection to CPIQ.rev_hist_lm_iq_conn1;
+resume connection to CPIQ.rev_hist_lm_iq_conn1 execute transaction;
 
 -- create sub and at the same time...
-create subscription CPDB1_iq_driver_stats_sub
-for CPDB1_iq_driver_stats_rep
-with replicate at CPIQ.rev_hist_lm_iq_conn1
-without materialization
+create subscription CPDB2_iq_lm_revhst_sub for CPDB2_iq_lm_revhst_rep with replicate at CPIQ.rev_hist_lm_iq_conn1 without materialization;
 
 -- Wait to make sure that sub is created on BOTH Primary and Replicate!! And then...
 -- suspend connection for the duration of initial load
-suspend connection to CPIQ.rev_hist_lm_iq_conn1
+suspend connection to CPIQ.rev_hist_lm_iq_conn1;
 
 -- Now start the initial load in IQ through insert location command
 -- Note tables with identity column need to have identity insert on in IQ
---  set temporary option identity_insert = 'dbo.driver_stats'
-  truncate table driver_stats
-  insert into driver_stats IGNORE CONSTRAINT UNIQUE 0 location 'CPDB1.cpscan' packetsize 7168
-  { 
-  select 
-    employee_num             ,
-    terminal_num             ,
-    convert(varchar,conv_time_date,109)           ,
-    route_num                ,
-    emp_start_shift_time     ,
-    emp_left_terminal_time   ,
-    emp_start_del_time       ,
-    emp_end_del_time         ,
-    emp_start_lunch_time     ,
-    emp_end_lunch_time       ,
-    emp_start_pickup_time    ,
-    emp_end_pickup_time      ,
-    emp_start_break1_time    ,
-    emp_end_break1_time      ,
-    emp_start_break2_time    ,
-    emp_end_break2_time      ,
-    emp_return_terminal_time ,
-    emp_end_shift_time       ,
-    emp_regular_hours        ,
-    emp_overtime_hours       ,
-    eod_cod_cash             ,
-    eod_cod_cheque           ,
-    eod_cod_dts              ,
-    eod_cod_total_labels     ,
-    num_delivery_stops       ,
-    num_delivery_recs        ,
-    num_delivered_packages   ,
-    num_delivered_cod        ,
-    num_pickup_recs          ,
-    num_missed_pickups       ,
-    num_send_again           ,
-    num_cod_no_money         ,
-    num_refused              ,
-    num_return_to_sender     ,
-    num_not_home             ,
-    num_pickup_tags          ,
-    num_cancel_cod           ,
-    num_hold_for_pickup      ,
-    num_cannot_locate        ,
-    num_split_shipment       ,
-    num_change_of_address    ,
-    num_misroute             ,
-    num_nonattempt           ,
-    num_return_cod           ,
-    num_no_sign_required     ,
-    num_pickup_stops         ,
-    num_pickup_packages      ,
-    num_pickup_cod           ,
-    num_pickup_select        ,
-    num_pickup_hvr           ,
-    eod_comments2            ,
-    emp_start_break3_time    ,
-    emp_end_break3_time      ,
-    convert(varchar,inserted_on_cons,109)         ,
-    convert(varchar,updated_on_cons,109)          ,
-    num_billed_stops         ,
-    num_billed_pieces        ,
-    num_pickup_tdd           ,
-    num_pieces_loaded        ,
-    num_pieces_trans_in      ,
-    num_pieces_trans_out     ,
-    num_delivery_tdd         
-from driver_stats 
-  }
-  commit
+--  set temporary option identity_insert = 'dbo.revhsth'
+truncate table revhsth
+go
+insert into revhsth IGNORE CONSTRAINT UNIQUE 0 location 'CPDB1.rev_hist_lm' packetsize 7168
+{ 
+	select 
+	...
+	from revhsth 
+}
+commit
   
 --  set temporary option identity_insert = ''
 
@@ -270,31 +131,26 @@ from driver_stats
 -- disable i2di and u2di, since that slows replication down, see below
 -- resume connection to start initial sync of replicated tran
 
-resume connection to CPIQ.rev_hist_lm_iq_conn1
-admin who,sqm,CPIQ,rev_hist_lm_iq_conn1
+resume connection to CPIQ.rev_hist_lm_iq_conn1;
+admin who,sqm,CPIQ,rev_hist_lm_iq_conn1;
 
 --once the replicated tran are loaded, run a rs_ticket to make sure all data has been replicated.
 -- Or you can check admin who,sqm,CPIQ,rev_hist_lm_iq_conn1  If first and last seg block are same 
 -- then it is in sync and you can disable the following
 
-alter connection to CPIQ.rev_hist_lm_iq_conn1 for replicate table named dbo.driver_stats set dsi_command_convert to 'none'
-alter connection to CPIQ.rev_hist_lm_iq_conn1 set dsi_row_count_validation to 'on'
-suspend connection to CPIQ.rev_hist_lm_iq_conn1
-resume connection to CPIQ.rev_hist_lm_iq_conn1
+alter connection to CPIQ.rev_hist_lm_iq_conn1 for replicate table named dbo.revhsth set dsi_command_convert to 'none';
+alter connection to CPIQ.rev_hist_lm_iq_conn1 set dsi_row_count_validation to 'on';
+suspend connection to CPIQ.rev_hist_lm_iq_conn1;
+resume connection to CPIQ.rev_hist_lm_iq_conn1;
 
 --save all in a file in hqvsybrep3:/home/sybase/IQ_replication
 
 --************ In case you need to drop any repdef or sub, here is example of both *******--
 -- Disable table replication
-sp_setreptable driver_stats,'false'
+sp_setreptable revhsth,'false'
 
 --Drop sub
-
-drop subscription CPDB1_iq_driver_stats_sub
-for CPDB1_iq_driver_stats_rep
-with replicate at CPIQ.rev_hist_lm_iq_conn1
-without purge
-
+drop subscription CPDB2_iq_lm_revhst_sub for CPDB2_iq_lm_revhst_rep with replicate at CPIQ.rev_hist_lm_iq_conn1 without purge
 
 --Drop repdef
-drop replication definition CPDB1_iq_driver_stats_rep
+drop replication definition CPDB2_iq_lm_revhst_rep

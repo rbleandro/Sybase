@@ -1,5 +1,4 @@
-select  'DT' as DummyToken
-,ObjectName ,Active,CPUTime,ExecutionCount ,ExecutionTime /1000 ExecutionTime_in_Sec,MemUsageKB,PhysicalReads,LogicalReads, CompileDate,ObjectType,PlanID--,SnapExecutionTime,SnapExecutionCount
+select ObjectName ,Active,CPUTime,ExecutionCount ,ExecutionTime /1000 ExecutionTime_in_Sec,MemUsageKB,PhysicalReads,LogicalReads, CompileDate,ObjectType,PlanID--,SnapExecutionTime,SnapExecutionCount
 --into dba.dbo.cwparcel_live_routines_perf_stats
 from master..monCachedProcedures mp
 where 1=1

@@ -1,11 +1,20 @@
 --to get the error that caused repliaction to stop
 sysadmin log_first_tran, CPDB1, lmscan
 sysadmin log_first_tran, CPDB1, cmf_data_lm
+sysadmin log_first_tran, CPDB2, cmf_data_lm
+sysadmin log_first_tran, CPDB4, cmf_data_lm
 sysadmin log_first_tran, CPDB4, canada_post
 sysadmin log_first_tran, CPDB1, canship_webdb
 sysadmin log_first_tran, CPDB4, svp_cp
+sysadmin log_first_tran, CPDB2, svp_cp
 sysadmin log_first_tran, CPDB1, svp_cp
+sysadmin log_first_tran, CPDB4, svp_lm
+sysadmin log_first_tran, CPDB2, svp_lm
+sysadmin log_first_tran, CPDB4, rev_hist_lm
+sysadmin log_first_tran, CPDB2, rev_hist_lm
 sysadmin log_first_tran, CPIQ,svp_cp_iq_conn1
+
+alter connection to CPDB4.svp_cp set error class canpar_error_class
 
 rs_helpexception 0x0100006500000129
 
@@ -21,14 +30,24 @@ and sys_trans_id = (select top 1 sys_trans_id from rs_exceptshdr where error_sit
 order by e.src_cmd_line, e.output_cmd_index,t.sequence;
 
 -- to resume connection skipping the bad command
-resume connection to CPDB1.lmscan skip transaction
-resume connection to CPDB1.cmf_data_lm skip transaction
-resume connection to CPDB4.canada_post skip transaction
+
 resume connection to CPIQ.svp_cp_iq_conn1 execute transaction
 resume connection to CPDB1.svp_cp execute transaction
 resume connection to CPDB4.svp_cp execute transaction
 resume connection to CPDB4.cmf_data_lm 
+resume connection to CPDB2.cmf_data_lm execute transaction
+
+resume connection to CPDB4.canada_post skip transaction
 resume connection to CPDB4.cpscan skip transaction
+resume connection to CPDB4.svp_lm skip transaction
+resume connection to CPDB2.svp_cp skip transaction
+suspend connection to CPDB4.svp_cp; resume connection to CPDB4.svp_cp skip transaction;
+suspend connection to CPDB2.rev_hist_lm; resume connection to CPDB2.rev_hist_lm skip transaction;
+resume connection to CPDB1.lmscan skip transaction
+resume connection to CPDB1.cmf_data_lm skip transaction
+resume connection to CPDB4.cmf_data_lm skip transaction
+resume connection to CPDB2.cmf_data_lm skip transaction
+resume connection to CPDB2.rev_hist_lm skip transaction
 
 suspend connection to CPDB1.svp_cp
 suspend connection to CPIQ.svp_cp_iq_conn1
@@ -53,32 +72,103 @@ tail -n50 /opt/sybase/REP-15_5/install/hqvsybrep3.log -f
 isql -Usa -w0000000000000000000000000000000000000000000000000000000000000000999
 
 --to check the inbound and outbound queues for a database replication
+sv
 admin who,sqm, CPDB1, canship_webdb
+go go | egrep "First|Last"
+sv
+admin who,sqm, CPDB4, canada_post
+go | egrep "First|Last"
+sv
+admin who,sqm, CPDB2, canada_post
+go | egrep "First|Last"
+sv
+admin who,sqm, CPDB2, cpscan
+go | egrep "First|Last"
+
+sqm 4,canada_post --snippet to get the stable queue message performance (use it in sqsh)
 
 --to solve problems due to unique key errors
 alter connection to  CPDB4.svp_cp for replicate table named svp_parcel set dsi_command_convert to 'u2di'
 alter connection to  CPDB4.pms_data for replicate table named OPONZ set dsi_command_convert to 'i2di,u2di'
 alter connection to  CPDB1.svp_cp for replicate table named svp_parcel set dsi_command_convert to 'i2di,u2di'
+alter connection to  CPDB2.svp_lm for replicate table named svp_origin_stats set dsi_command_convert to 'i2di,u2di'
 alter connection to  CPDB1.lmscan for replicate table named tttl_lo_linehaul_outbound set dsi_command_convert to 'i2di,u2di'
 alter connection to  CPDB1.lmscan for replicate table named tttl_lo_linehaul_outbound set dsi_command_convert to 'none'
 alter connection to  CPIQ.svp_cp_iq_conn1 for replicate table named svp_parcel set dsi_command_convert to 'i2di,u2di'
-alter connection to  CPDB4.cmf_data_lm for replicate table named waybill_prefix set dsi_command_convert to 'i2di,u2di'
-alter connection to  CPDB4.cmf_data_lm for replicate table named waybill_prefix set dsi_command_convert to 'none'
+alter connection to  CPDB2.cmf_data_lm for replicate table named waybill_prefix set dsi_command_convert to 'i2di,u2di'; suspend connection to CPDB2.cmf_data_lm; resume connection to CPDB2.cmf_data_lm;
+alter connection to  CPDB4.cmf_data_lm for replicate table named waybill_prefix set dsi_command_convert to 'i2di,u2di'; suspend connection to CPDB4.cmf_data_lm; resume connection to CPDB4.cmf_data_lm;
+alter connection to  CPDB2.cmf_data_lm for replicate table named waybill_prefix set dsi_command_convert to 'none'; suspend connection to CPDB2.cmf_data_lm; resume connection to CPDB2.cmf_data_lm;
+alter connection to  CPDB4.cmf_data_lm for replicate table named waybill_prefix set dsi_command_convert to 'none'; suspend connection to CPDB4.cmf_data_lm; resume connection to CPDB4.cmf_data_lm;
+alter connection to  CPDB1.cpscan for replicate table named tttl_dr_delivery_record_hospital set dsi_command_convert to 'i2di,u2di'
+alter connection to  CPDB4.cpscan for replicate table named tttl_dr_delivery_record_hospital set dsi_command_convert to 'i2di,u2di'
+alter connection to  CPDB1.cpscan for replicate table named tttl_dr_delivery_record_hospital set dsi_command_convert to 'none'
+alter connection to  CPDB4.cpscan for replicate table named tttl_dr_delivery_record_hospital set dsi_command_convert to 'none'
+alter connection to  CPDB2.canshipws for replicate table named address set dsi_command_convert to 'i2di,u2di'
+alter connection to  CPDB2.canshipws for replicate table named address set dsi_command_convert to 'none'
+alter connection to  CPDB2.lmscan for replicate table named pd_stops_pcs set dsi_command_convert to 'i2di,u2di'; suspend connection to CPDB2.lmscan; resume connection to CPDB2.lmscan;
+alter connection to  CPDB4.lmscan for replicate table named pd_stops_pcs set dsi_command_convert to 'i2di,u2di'; suspend connection to CPDB4.lmscan; resume connection to CPDB4.lmscan;
+alter connection to  CPDB2.lmscan for replicate table named pd_stops_pcs set dsi_command_convert to 'none'; suspend connection to CPDB2.lmscan; resume connection to CPDB2.lmscan;
+alter connection to  CPDB4.lmscan for replicate table named pd_stops_pcs set dsi_command_convert to 'none'; suspend connection to CPDB4.lmscan; resume connection to CPDB4.lmscan;
+alter connection to  CPDB2.cpscan for replicate table named pd_stops_pcs set dsi_command_convert to 'i2di,u2di'; suspend connection to CPDB2.cpscan; resume connection to CPDB2.cpscan;
+alter connection to  CPDB4.cpscan for replicate table named pd_stops_pcs set dsi_command_convert to 'i2di,u2di'; suspend connection to CPDB4.cpscan; resume connection to CPDB4.cpscan;
+alter connection to  CPDB2.cpscan for replicate table named pd_stops_pcs set dsi_command_convert to 'none'; suspend connection to CPDB2.cpscan; resume connection to CPDB2.cpscan;
+alter connection to  CPDB4.cpscan for replicate table named pd_stops_pcs set dsi_command_convert to 'none'; suspend connection to CPDB4.cpscan; resume connection to CPDB4.cpscan;
+alter connection to  CPDB2.cmf_data for replicate table named cws_service set dsi_command_convert to 'i2di,u2di'; suspend connection to CPDB2.cmf_data; resume connection to CPDB2.cmf_data;
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
-alter connection to  CPDB4.lmscan for replicate table named GeoCoordinate set dsi_command_convert to 'i2di,u2di'
-go
-resume connection to CPDB4.lmscan execute transaction
-go
-alter connection to  CPDB4.lmscan for replicate table named GeoCoordinate set dsi_command_convert to 'none'
-go
-suspend connection to CPDB4.lmscan
-go
-resume connection to CPDB4.lmscan execute transaction
-go
+alter connection to  CPDB4.lmscan for replicate table named GeoCoordinate set dsi_command_convert to 'i2di,u2di'; suspend connection to CPDB4.lmscan; resume connection to CPDB4.lmscan;
+alter connection to  CPDB4.lmscan for replicate table named GeoCoordinate set dsi_command_convert to 'none'; suspend connection to CPDB4.lmscan; resume connection to CPDB4.lmscan;
+alter connection to  CPDB2.lmscan for replicate table named GeoCoordinate set dsi_command_convert to 'i2di,u2di'; suspend connection to CPDB2.lmscan; resume connection to CPDB2.lmscan;
+alter connection to  CPDB2.lmscan for replicate table named GeoCoordinate set dsi_command_convert to 'none'; suspend connection to CPDB2.lmscan; resume connection to CPDB2.lmscan;
+
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
+select textval
+--,max(log_time)
+,log_time,error_site
+from rs_exceptshdr hdr,rs_exceptscmd cmd,rs_systext
+where error_site in ('CPDB4','CPDB2')
+and error_db = 'svp_cp'
+and hdr.sys_trans_id = cmd.sys_trans_id
+and cmd_id = parentid
+and textval not like '%begin transaction%'
+and textval not like '%commit transaction%'
+and textval not like '%roman8%'
+and textval not like '%rs_update_lastcommit%'
+and textval not like '%~$%'
+and textval not like '%@conn_id%'
+and textval not like '%if @@error <> 0 rollback transaction%'
+and cmd_type='L'
+and log_time > '2019-07-31'
+--group by textval
+--order by textval,max(log_time) desc
+order by textval,log_time desc
+go
+--use the query below to find out what connections had commands skipped
+select error_site,error_db
+from rs_exceptshdr hdr,rs_exceptscmd cmd,rs_systext
+where 1=1
+and hdr.sys_trans_id = cmd.sys_trans_id
+and cmd_id = parentid
+and textval not like '%begin transaction%'
+and textval not like '%commit transaction%'
+and textval not like '%roman8%'
+and textval not like '%rs_update_lastcommit%'
+and textval not like '%~$%'
+and textval not like '%@conn_id%'
+and textval not like '%if @@error <> 0 rollback transaction%'
+and cmd_type='L'
+and log_time > '2019-07-17'
+group by error_site,error_db
+--order by log_time desc
+go
 
 --to rollback changes to the command conversion behavior
 alter connection to  CPDB4.svp_cp for replicate table named svp_parcel set dsi_command_convert to 'none'
 alter connection to  CPIQ.svp_cp_iq_conn1 for replicate table named DBA.cp_svp_parcel set dsi_command_convert to 'none'
+
+alter connection to CPDB4.canada_post set dist_sqt_max_cache_size to '0'; suspend connection to CPDB4.canada_post; resume connection to CPDB4.canada_post;
+
+
+admin config,"connection",CPDB4,svp_cp
+go

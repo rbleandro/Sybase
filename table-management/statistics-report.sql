@@ -26,3 +26,7 @@ go
 
 exec sp_showoptstats 'cpscan..tttl_ma_shipment'
 go
+
+optdiag statistics canshipws.dbo.address_book -Usa -o/opt/sap/db_backups/optdiag/address_book.opt -SCPDB1 -X
+optdiag statistics canshipws.dbo.address -Usa -o/opt/sap/db_backups/optdiag/address_book.opt -SCPDB1 -X
+

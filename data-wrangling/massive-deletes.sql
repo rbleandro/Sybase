@@ -16,13 +16,11 @@ set @count=1000
 --waitfor delay '00:00:02'
 --select @count
 
-set rowcount @count
 while @count > 0
 begin
 delete top 1000 from cpscan..tttl_pr_pickup_record where  updated_on_cons < dateadd(yy,-7,getdate())
 select @count=@@rowcount
 waitfor delay '00:00:02'
-select @count
 end
 go
 

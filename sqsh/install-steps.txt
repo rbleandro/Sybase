@@ -3,13 +3,14 @@
 
 subscription-manager register --username amerk71 --password canpar --auto-attach #run only if not registered to rpm already
 cd $HOME
+mkdir Downloads
 mkdir src
 cd src
-tar xzf ~/Downloads/sqsh-2.5.16.tgz #change your download directory here
+tar xzf ~/Downloads/sqsh-2.5.16.1.tgz #change your download directory here
 cd sqsh-2.5
 sudo yum install readline-devel #run only if you don't already have a readline package. This is a high recommended package when using sqsh
 export SYBASE=/opt/sap #execute only if  the environment variable is not already set
-./configure #execute from sqsh-2.5 directory
+./configure --with-readline #execute from sqsh-2.5 directory. If you get an error about not having a C compiler, run sudo yum install gcc and then try again
 make #execute from sqsh-2.5 directory
 sudo make install #execute from sqsh-2.5 directory
 sudo make install.man #execute from sqsh-2.5 directory
@@ -20,6 +21,12 @@ chmod 600 $HOME/.sqshrc
 mkdir tmp $HOME/.sqsh
 chmod 700 $HOME/.sqsh
 
+#to test
+sqsh -Usa
+
+####### END OF INSTALL PROCEDURE ########
+
+####### aliases (optional. append to the .sqshrc file to add additional aliases) #######
 # aliases for T-SQL commands
 \alias statson='\loop -e "set statistics io on set statistics time on"'
 \alias statsoff='\loop -e "set statistics io off set statistics time 
@@ -41,11 +48,8 @@ off"'
 \alias stby='\reconnect -SCPDB2 -Usa '
 \alias test='\reconnect -SCPSYBTEST -Usa '
 \alias iq='\reconnect -SCPIQ -Usa '
-\alias REPX126='\reconnect -c -SREPX126 -Usa '
-\alias REPX125='\reconnect -c -SREPX125 -Usa '
 
-
-#interfaces entries
+####### interfaces entries (just for reference) #######
 
 hqvsybrep3
         master tcp ether 10.3.1.83 4000

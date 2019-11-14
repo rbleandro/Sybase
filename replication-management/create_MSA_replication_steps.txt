@@ -1,26 +1,26 @@
 --============================================================================================================================================================================================================
 --Following are the steps to check if a database was added to the replication server. Do this before anything else to confirm that you have to run the rs_init command to add the replication agent
 --============================================================================================================================================================================================================
-in Primary db (DBARTISAN):
+in Primary db (hub_db):
 --==============
-use sort_data
+use hub_db
 go
-sp_reptostandby sort_data,'all'
+sp_reptostandby hub_db,'all'
 go
-sp_setrepdbmode sort_data,uds,'off' --<-- Keeping it off
+sp_setrepdbmode hub_db,uds,'off' --<-- Keeping it off
 go
-sp_config_rep_agent sort_data,disable --this will return an error if replication has never been configured for the database
+sp_config_rep_agent hub_db,disable --this will return an error if replication has never been configured for the database
 go
 --====
 -- In Secondary db
 --===
-use sort_data
+use hub_db
 go
-sp_reptostandby sort_data,'all'
+sp_reptostandby hub_db,'all'
 go
-sp_setrepdbmode sort_data,uds,'off' --<-- Keeping it off
+sp_setrepdbmode hub_db,uds,'off' --<-- Keeping it off
 go
-sp_config_rep_agent sort_data,disable --this will return an error if replication has never been configured for the database
+sp_config_rep_agent hub_db,disable --this will return an error if replication has never been configured for the database
 go
 --=========================================================================END OF INITIAL CHECK===================================================================================================================================
 
@@ -30,36 +30,47 @@ go
 --Configure replication for all databases through rs_init. The rs_init will create the threads for the log reader agent and create the logical connection to the specified database.
 
 cd /opt/sybase/REP-15_5/install/
-./rs_init -r /opt/sybase/cron_scripts/replication_setup/CPDB2_sort_data_setupdb.rs
-./rs_init -r /opt/sybase/cron_scripts/replication_setup/CPDB1_sort_data_setupdb.rs
-./rs_init -r /opt/sybase/cron_scripts/replication_setup/CPDB4_sort_data_setupdb.rs
+./rs_init -r /opt/sybase/cron_scripts/replication_setup/CPDB1_hub_db_setupdb.rs
+./rs_init -r /opt/sybase/cron_scripts/replication_setup/CPDB2_hub_db_setupdb.rs
+./rs_init -r /opt/sybase/cron_scripts/replication_setup/CPDB4_hub_db_setupdb.rs
 
 
 --=================
 -- In PDB
 --=================
-use sort_data
+use hub_db
 go
-sp_stop_rep_agent sort_data
+exec hub_db..sp_reptostandby hub_db,'all'
 go
-sp_config_rep_agent sort_data, send_warm_standby_xacts,true
+exec hub_db..sp_setrepdbmode hub_db,uds,'off' --<-- Keeping it off
 go
---sp_config_rep_agent sort_data, 'ltl metadata reduction', 'true'
+exec hub_db..sp_stop_rep_agent hub_db
 go
-sp_start_rep_agent sort_data
+exec hub_db..sp_config_rep_agent hub_db, enable,'hqvsybrep3','sa','s9b2s3'
+go
+exec hub_db..sp_config_rep_agent hub_db, send_warm_standby_xacts,true
+go
+exec hub_db..sp_start_rep_agent hub_db
 go
 --=================
 -- In RDB
 --=================
-use sort_data
+use hub_db
 go
-sp_stop_rep_agent sort_data
+sp_stop_rep_agent hub_db
 go
-sp_config_rep_agent sort_data, send_warm_standby_xacts,true
+sp_config_rep_agent hub_db, send_warm_standby_xacts,true
 go
---sp_config_rep_agent sort_data, 'ltl metadata reduction', 'true'
+--sp_config_rep_agent hub_db, 'ltl metadata reduction', 'true'
 go
---sp_start_rep_agent sort_data --> DO NOT RESTART THE REPAGENT
+--sp_start_rep_agent hub_db --> DO NOT RESTART THE REPAGENT
+go
+
+exec hub_db..sp_dropuser 'hub_db_maint' --only do if the database is being configured for replication for the first time
+go
+exec hub_db..sp_dropalias 'hub_db_maint' --you may have to drop and recreate the alias after the load
+go
+exec hub_db..sp_addalias 'hub_db_maint','dbo'
 go
 
 --=================
@@ -71,90 +82,103 @@ In PRS:
 --dist_sqt_max_cache_size defines The maximum Stable Queue Transaction (SQT) cache size for the DIST connection.
 --Dynamic SQL allows the Replication Server Data Server Interface (DSI) to prepare dynamic SQL statements at the target user database and to run them repeatedly.
 
-alter connection to CPDB1.sort_data set dsi_compile_enable to 'on'
+--ATTENTION! DROP ANY SUBSCRIPTIONS THAT POINT TO THE CONNECTION BEFORE DROPPING THE CONNECTION. IF THE CONNECTION IS TO A PRIMARY DATABASE, ALSO DROP ANY REP DEFINITIONS.
+drop connection to CPDB2.hub_db
 go
-alter connection to CPDB1.sort_data set dsi_replication_ddl to 'on'
-go
-alter connection to CPDB1.sort_data set dsi_keep_triggers to 'off'
-go
-alter connection to CPDB1.sort_data set dsi_compile_max_cmds to '100000'
-go
-alter connection to CPDB1.sort_data set dist_sqt_max_cache_size to '509715200'
-go
-alter connection to CPDB1.sort_data set dynamic_sql to 'off'
-go
-alter connection to CPDB1.sort_data set dsi_row_count_validation to 'off'
-go
-suspend connection to CPDB1.sort_data
-go
-resume connection to CPDB1.sort_data
+create connection to CPDB2.hub_db
+set error class canpar_error_class
+set function string class rs_sqlserver_function_class
+set username hub_db_maint
+set password sybase
 go
 
-alter connection to CPDB4.sort_data set dsi_compile_enable to 'on'
+alter connection to CPDB2.hub_db set dsi_bulk_copy to 'off'
 go
-alter connection to CPDB4.sort_data set dsi_replication_ddl to 'on'
+alter connection to CPDB2.hub_db set dsi_compile_enable to 'off'
 go
-alter connection to CPDB4.sort_data set dsi_keep_triggers to 'off'
+alter connection to CPDB2.hub_db set dsi_replication_ddl to 'on'
 go
-alter connection to CPDB4.sort_data set dsi_compile_max_cmds to '100000'
+alter connection to CPDB2.hub_db set dsi_keep_triggers to 'off'
 go
-alter connection to CPDB4.sort_data set dist_sqt_max_cache_size to '509715200'
+alter connection to CPDB2.hub_db set dsi_compile_max_cmds to '100000'
 go
-alter connection to CPDB4.sort_data set dynamic_sql to 'off'
+alter connection to CPDB2.hub_db set dist_sqt_max_cache_size to '509715200'
 go
-alter connection to CPDB4.sort_data set dsi_row_count_validation to 'off'
+alter connection to CPDB2.hub_db set dynamic_sql to 'off'
 go
-suspend connection to CPDB4.sort_data
+alter connection to CPDB2.hub_db set dsi_row_count_validation to 'off'
 go
-resume connection to CPDB4.sort_data
+suspend connection to CPDB2.hub_db
+go
+resume connection to CPDB2.hub_db
+go
+
+alter connection to CPDB4.hub_db set dsi_bulk_copy to 'off'
+go
+alter connection to CPDB4.hub_db set dsi_compile_enable to 'off'
+go
+alter connection to CPDB4.hub_db set dsi_replication_ddl to 'on'
+go
+alter connection to CPDB4.hub_db set dsi_keep_triggers to 'off'
+go
+alter connection to CPDB4.hub_db set dsi_compile_max_cmds to '100000'
+go
+alter connection to CPDB4.hub_db set dist_sqt_max_cache_size to '509715200'
+go
+alter connection to CPDB4.hub_db set dynamic_sql to 'off'
+go
+alter connection to CPDB4.hub_db set dsi_row_count_validation to 'off'
+go
+suspend connection to CPDB4.hub_db
+go
+resume connection to CPDB4.hub_db
+go
+
+alter connection to CPDB1.hub_db set dsi_bulk_copy to 'off'
+go
+alter connection to CPDB1.hub_db set dsi_compile_enable to 'off'
+go
+alter connection to CPDB1.hub_db set dsi_replication_ddl to 'on'
+go
+alter connection to CPDB1.hub_db set dsi_keep_triggers to 'off'
+go
+alter connection to CPDB1.hub_db set dsi_compile_max_cmds to '100000'
+go
+alter connection to CPDB1.hub_db set dist_sqt_max_cache_size to '509715200'
+go
+alter connection to CPDB1.hub_db set dynamic_sql to 'off'
+go
+alter connection to CPDB1.hub_db set dsi_row_count_validation to 'off'
+go
+suspend connection to CPDB1.hub_db
+go
+resume connection to CPDB1.hub_db
 go
 
 --==================
+drop database replication definition CPDB2_hub_db_dbrep with primary at CPDB1.hub_db;
+create database replication definition CPDB1_hub_db_dbrep with primary at CPDB1.hub_db replicate DDL replicate system procedures;
 
-create database replication definition CPDB2_sort_data_dbrep
-with primary at CPDB2.sort_data
-replicate DDL
-replicate system procedures
---replicate SQLDML --<--- Not using this for now
+define subscription CPDB2_hub_db_dbsub for database replication definition CPDB1_hub_db_dbrep with primary at CPDB1.hub_db with replicate at CPDB2.hub_db subscribe to truncate table use dump marker;
+check subscription CPDB2_hub_db_dbsub for database replication definition CPDB1_hub_db_dbrep with primary at CPDB1.hub_db with replicate at CPDB2.hub_db;
+perl /opt/sap/cron_scripts/dump_databases_to_stdby.pl hub_db rleandro 1
 
-define subscription CPDB2_sort_data_dbsub
-for database replication definition CPDB2_sort_data_dbrep
-with primary at CPDB2.sort_data
-with replicate at CPDB1.sort_data
-subscribe to truncate table
-use dump marker
-
-validate subscription CPDB2_sort_data_dbsub
-for database replication definition CPDB2_sort_data_dbrep
-with primary at CPDB2.sort_data
-with replicate at CPDB1.sort_data
-
-define subscription CPDB4_sort_data_dbsub
-for database replication definition CPDB2_sort_data_dbrep
-with primary at CPDB2.sort_data
-with replicate at CPDB4.sort_data
-subscribe to truncate table
-use dump marker
-
-validate subscription CPDB4_sort_data_dbsub
-for database replication definition CPDB2_sort_data_dbrep
-with primary at CPDB2.sort_data
-with replicate at CPDB4.sort_data
-
-
+define subscription CPDB4_hub_db_dbsub for database replication definition CPDB1_hub_db_dbrep with primary at CPDB1.hub_db with replicate at CPDB4.hub_db subscribe to truncate table use dump marker;
+check subscription CPDB4_hub_db_dbsub for database replication definition CPDB1_hub_db_dbrep with primary at CPDB1.hub_db with replicate at CPDB4.hub_db;
+perl /opt/sap/cron_scripts/dump_databases_to_dr.pl hub_db rleandro 1
 
 --=================
 in RDB
 --=================
-use sort_data
+use hub_db
 go
 dbcc settrunc(ltm,ignore) -- make sure that you disable repagent on the replicate, after the load
 go
-sp_dropuser N'sort_data_maint'
+sp_dropuser N'hub_db_maint'
 go
-sp_dropalias N'sort_data_maint' --drop alias this is sometimes necessary specially if the database is involved in replication
+sp_dropalias N'hub_db_maint' --drop alias this is sometimes necessary specially if the database is involved in replication
 GO
-sp_addalias N'sort_data_maint', N'dbo' --add the database as dbo for appropriate permissions
+sp_addalias N'hub_db_maint', N'dbo' --add the database as dbo for appropriate permissions
 GO
 select db_name(dbid),* from master..syslogshold -- this should return no results for the affected database
 go
@@ -165,49 +189,29 @@ go
 --Following are the steps to RESYNCH a database by dropping and recreating the subscription
 --============================================================================================================================================================================================================
 
--- drop the current subscription (use the following query after connecting to rssd to confirm the existence of a subscription for the database: select top 10 * from  rs_subscriptions where subname like '%sort_data%')
-drop subscription CPDB4_sort_data_dbsub
-for database replication definition CPDB2_sort_data_dbrep
-with primary at CPDB2.sort_data
-with replicate at CPDB4.sort_data
-without purge
+-- drop the current subscription (use the following query after connecting to rssd to confirm the existence of a subscription for the database: select top 10 * from  rs_subscriptions where subname like '%hub_db%')
+drop subscription CPDB4_hub_db_dbsub for database replication definition CPDB1_hub_db_dbrep with primary at CPDB1.hub_db with replicate at CPDB4.hub_db without purge;
 
-drop subscription CPDB2_sort_data_dbsub
-for database replication definition CPDB2_sort_data_dbrep
-with primary at CPDB2.sort_data
-with replicate at CPDB1.sort_data
-without purge
+drop subscription CPDB2_hub_db_dbsub for database replication definition CPDB1_hub_db_dbrep with primary at CPDB1.hub_db with replicate at CPDB2.hub_db without purge;
 
-define subscription CPDB4_sort_data_dbsub
-for database replication definition CPDB2_sort_data_dbrep
-with primary at CPDB2.sort_data
-with replicate at CPDB4.sort_data
+define subscription CPDB4_hub_db_dbsub for database replication definition CPDB2_hub_db_dbrep with primary at CPDB1.hub_db with replicate at CPDB4.hub_db subscribe to truncate table use dump marker;
+validate subscription CPDB4_hub_db_dbsub for database replication definition CPDB2_hub_db_dbrep with primary at CPDB1.hub_db with replicate at CPDB4.hub_db ;
+
+define subscription CPDB2_hub_db_dbsub
+for database replication definition CPDB2_hub_db_dbrep
+with primary at CPDB1.hub_db
+with replicate at CPDB2.hub_db
 subscribe to truncate table
 use dump marker
 
-validate subscription CPDB4_sort_data_dbsub
-for database replication definition CPDB2_sort_data_dbrep
-with primary at CPDB2.sort_data
-with replicate at CPDB4.sort_data
-
-define subscription CPDB2_sort_data_dbsub
-for database replication definition CPDB2_sort_data_dbrep
-with primary at CPDB2.sort_data
-with replicate at CPDB1.sort_data
-subscribe to truncate table
-use dump marker
-
-validate subscription CPDB2_sort_data_dbsub
-for database replication definition CPDB2_sort_data_dbrep
-with primary at CPDB2.sort_data
-with replicate at CPDB1.sort_data
-
-
-
+validate subscription CPDB2_hub_db_dbsub
+for database replication definition CPDB2_hub_db_dbrep
+with primary at CPDB1.hub_db
+with replicate at CPDB2.hub_db
 
 
 --================================================================================END OF REPLICATION RESYNCH CONFIG============================================================================================================================
 
 -- if you need to drop repdef
-drop database replication definition CPDB2_sort_data_dbrep
-with primary at CPDB1.sort_data
+drop database replication definition CPDB2_hub_db_dbrep with primary at CPDB2.hub_db
+drop database replication definition CPDB2_hub_db_dbrep with primary at CPDB2.hub_db;

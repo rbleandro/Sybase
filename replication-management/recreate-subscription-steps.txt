@@ -1,10 +1,46 @@
 --to check the inbound and outbound queues for a database replication
 admin who,sqm, CPDB4, svp_cp
---admin who,sqm, CPDB4, svp_cp
---admin who,sqm, CPIQ, svp_cp_iq_conn1
+
+admin who,sqm, CPDB2, cpscan;
+
+admin who,sqm, CPDB4, svp_lm;
+admin who,sqm, CPDB2, svp_lm;
+admin who,dist, CPDB2, svp_lm;
+admin who,sqt, CPDB2, svp_lm;
+admin who,sqm, CPDB1, svp_lm;
+
+admin who,sqm, CPDB4, svp_cp;
+admin who,sqm, CPDB2, svp_cp;
+admin who,dist, CPDB2, svp_cp;
+admin who,sqt, CPDB2, svp_cp;
+admin who,sqm, CPDB1, svp_cp;
+
+admin who,sqm, CPDB4, sort_data
+admin who,sqm, CPDB2, sort_data
+
+admin who,sqm, CPDB4, canada_post
+admin who,sqt, CPDB1, canada_post
+
+admin who,sqm, CPDB2, canship_webdb
+admin who,sqm, CPDB1, canship_webdb
+admin who,sqt, CPDB2, canship_webdb
+
+admin who,sqm, CPDB4, dqm_data_lm
+admin who,sqm, CPDB2, dqm_data_lm
+admin who,sqm, CPDB4, cmf_data
+admin who,sqm, CPDB4, cmf_data_lm
+admin who,sqm,CPIQ,lm_revhstf1_iq_conn1
+admin who,sqm,CPIQ,lm_bcxref_iq_conn1
+admin who,sqm, CPIQ, svp_cp_iq_conn1
+admin who,sqm, CPIQ, rev_hist_lm_iq_conn1
+
+sysadmin log_first_tran, CPIQ, lm_revhstf1_iq_conn1
+sysadmin log_first_tran, CPDB4, svp_cp
 
 sysadmin hibernate_on, hqvsybrep3
 sysadmin sqm_purge_queue, 246, 0
+sysadmin sqm_purge_queue, 271, 0
+sysadmin sqm_purge_queue, 270, 0
 sysadmin hibernate_off, hqvsybrep3
 
 --suspend connection to CPDB4.svp_cp

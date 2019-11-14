@@ -1,16 +1,16 @@
 use master
 go
-exec dbo.rp_kill_db_processes 'rev_hist_old'
+exec dbo.rp_kill_db_processes 'Hub_db'
 go
-exec sp_dboption rev_hist_old, single, true
+exec sp_dboption Hub_db, single, true
 go
-use rev_hist_old checkpoint 
+use Hub_db checkpoint 
 go
-sp_renamedb rev_hist_old, rev_hist_cubew
+sp_renamedb Hub_db, hub_db
 go
-use master exec sp_dboption rev_hist_cubew, single, false 
+use master exec sp_dboption hub_db, single, false 
 go
-use rev_hist_cubew checkpoint
+use hub_db checkpoint
 go
 select * from master..sysdatabases where status & 1024 = 1024
 go

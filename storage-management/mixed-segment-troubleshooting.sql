@@ -1,9 +1,9 @@
 select db_name(u.dbid),lstart,size / (power(2,20)/@@maxpagesize) as 'MB',d.name as 'device name',case when segmap = 4 then 'log' when segmap & 4 = 0 then 'data' else 'log and data' end as 'usage'
 ,segmap
-from master..sysusages u, master..sysdevices d where d.vdevno = u.vdevno and d.status & 2 = 2 and dbid in (select distinct  u.dbid from sysusages u, sysdevices d 
-where d.vdevno = u.vdevno and d.status & 2 = 2 
---and segmap = 7 and db_name(u.dbid) not like 'tempdb%' and u.dbid between 4 and 31512
-and db_name(u.dbid) ='cmf_data_lm' ) order by 1
+from master..sysusages u, master..sysdevices d where d.vdevno = u.vdevno and d.status & 2 = 2 
+and segmap = 7 --get mixed segments
+and db_name(u.dbid) not like 'tempdb%' and u.dbid between 4 and 31512
+order by 1
 go
 use master 
 declare @log int
