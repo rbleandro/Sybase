@@ -29,6 +29,10 @@ exec tempdb6..sp_addthreshold tempdb6, "logsegment", 512000, sp_thresholdaction 
 exec tempdb6..sp_addthreshold tempdb6, "logsegment", 2560000, sp_thresholdaction --5000 MB threshold for the logsegment
 exec tempdb6..sp_addthreshold tempdb6, "logsegment", 5120000, sp_thresholdaction --10000 MB threshold for the logsegment
 go
+exec tempdb_mpr..sp_addthreshold tempdb_mpr, "logsegment", 512000, sp_thresholdaction --1000 threshold for the logsegment
+exec tempdb_mpr..sp_addthreshold tempdb_mpr, "logsegment", 2560000, sp_thresholdaction --5000 MB threshold for the logsegment
+exec tempdb_mpr..sp_addthreshold tempdb_mpr, "logsegment", 5120000, sp_thresholdaction --10000 MB threshold for the logsegment
+go
 exec tempdb7..sp_addthreshold tempdb7, "logsegment", 512000, sp_thresholdaction --1000 threshold for the logsegment
 exec tempdb7..sp_addthreshold tempdb7, "logsegment", 2560000, sp_thresholdaction --5000 MB threshold for the logsegment
 exec tempdb7..sp_addthreshold tempdb7, "logsegment", 5120000, sp_thresholdaction --10000 MB threshold for the logsegment
@@ -40,23 +44,23 @@ go
 exec tempdb9..sp_addthreshold tempdb9, "logsegment", 512000, sp_thresholdaction --1000 threshold for the logsegment
 exec tempdb9..sp_addthreshold tempdb9, "logsegment", 2560000, sp_thresholdaction --5000 MB threshold for the logsegment
 go
-exec tempdb1..sp_addthreshold tempdb1, "logsegment", 256000, sp_thresholdactiontempdb
+exec tempdb1..sp_addthreshold tempdb1, "logsegment", 256000, sp_thresholdactiontempdb --removes the tempdb from the default group if this threshold is crossed
 go
-exec tempdb2..sp_addthreshold tempdb2, "logsegment", 256000, sp_thresholdactiontempdb
+exec tempdb2..sp_addthreshold tempdb2, "logsegment", 256000, sp_thresholdactiontempdb --removes the tempdb from the default group if this threshold is crossed
 go
-exec tempdb3..sp_addthreshold tempdb3, "logsegment", 256000, sp_thresholdactiontempdb
+exec tempdb3..sp_addthreshold tempdb3, "logsegment", 256000, sp_thresholdactiontempdb --removes the tempdb from the default group if this threshold is crossed
 go
-exec tempdb4..sp_addthreshold tempdb4, "logsegment", 256000, sp_thresholdactiontempdb
+exec tempdb4..sp_addthreshold tempdb4, "logsegment", 256000, sp_thresholdactiontempdb --removes the tempdb from the default group if this threshold is crossed
 go
-exec tempdb5..sp_addthreshold tempdb5, "logsegment", 256000, sp_thresholdactiontempdb
+exec tempdb5..sp_addthreshold tempdb5, "logsegment", 256000, sp_thresholdactiontempdb --removes the tempdb from the default group if this threshold is crossed
 go
-exec tempdb6..sp_addthreshold tempdb6, "logsegment", 256000, sp_thresholdactiontempdb
+exec tempdb6..sp_addthreshold tempdb6, "logsegment", 256000, sp_thresholdactiontempdb --removes the tempdb from the default group if this threshold is crossed
 go
-exec tempdb7..sp_addthreshold tempdb7, "logsegment", 256000, sp_thresholdactiontempdb
+exec tempdb7..sp_addthreshold tempdb7, "logsegment", 256000, sp_thresholdactiontempdb --removes the tempdb from the default group if this threshold is crossed
 go
-exec tempdb8..sp_addthreshold tempdb8, "logsegment", 256000, sp_thresholdactiontempdb
+exec tempdb8..sp_addthreshold tempdb8, "logsegment", 256000, sp_thresholdactiontempdb --removes the tempdb from the default group if this threshold is crossed
 go
-exec tempdb9..sp_addthreshold tempdb9, "logsegment", 256000, sp_thresholdactiontempdb
+exec tempdb9..sp_addthreshold tempdb9, "logsegment", 256000, sp_thresholdactiontempdb --removes the tempdb from the default group if this threshold is crossed
 go
 
 

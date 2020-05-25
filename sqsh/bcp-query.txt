@@ -47,7 +47,8 @@ SELECT reference_num, service_type, shipper_num, convert(varchar(50),conv_time_d
 , pickup_shipper_num, postal_code, additional_serv_flag, mod10b_fail_flag, multiple_barcode_flag, multiple_shipper_flag
 , comments_flag, convert(varchar(50),inserted_on_cons,121) as inserted_on_cons, convert(varchar(50),updated_on_cons,121) as updated_on_cons
 FROM lmscan.dbo.tttl_ev_event noholdlock
-where inserted_on_cons >= '2019-01-01' and inserted_on_cons < '2019-02-01'
+where inserted_on_cons >= '2019-11-26'
+and inserted_on_cons < '2019-11-27'
 go -m bcp > /home/sybase/db_backups/lm_ev_event_to_test_jan.csv
 
 SELECT reference_num, service_type, shipper_num, convert(varchar(50),conv_time_date,121) as conv_time_date, employee_num, status, convert(varchar(50),scan_time_date,121) as scan_time_date, terminal_num
@@ -72,6 +73,16 @@ where inserted_on_cons >= '2019-04-01' and inserted_on_cons < '2019-05-01'
 go -m bcp > /home/sybase/db_backups/lm_ev_event_to_test_apr.csv
 
 -----------------------------------------------------------------
+SELECT * from lmscan..tttl_ev_event where employee_num in ('L02159') and  conv_time_date between '2020-01-28 00:00' and '2020-01-30 00:00'
+\bcp -S CPDB1 lmscan..tttl_ev_event
+
+SELECT * from lmscan..tttl_dr_delivery_record where employee_num in ('L02159') and  conv_time_date between '2020-01-28 00:00' and '2020-01-30 00:00'
+\bcp -S CPDB1 lmscan..tttl_dr_delivery_record
+
+SELECT processing_status, terminal_num, Inbound_Name, InductID, ScannedTime, PackageID, Barcode2, Barcode3, Barcode4, Smart_Barcode, PostalCode, ServiceType, AW, AW_UOM, NoReadFlag, Key_Station_ID, Key_Station_Time, Key_Station_Data, RecircCount, Physical_Chute_ID, Outbound_Name, DivertTime, Destination_Desc, Actual_Length, Actual_Width, Actual_Height, Actual_Volume, Dimension_Code, Weight_Code, Logical_Reject_Reason, Last_Reject_Reason, Sort_Method, Container_Desc, Is_XC, XC_Reason_ID, processed_on, updated_on, inserted_on 
+from sort_data..overhead_package_scans where terminal_num='270' 
+\bcp -S CPDB1 lm_stage..overhead_package_scans
+
 SELECT *
 FROM cpscan..pd_stops_pcs_barcodes noholdlock
 \bcp -S CPDB2 cpscan..pd_stops_pcs_barcodes
@@ -104,12 +115,25 @@ SELECT *
 FROM rev_hist_lm..svb_outstanding noholdlock
 \bcp -S CPDB2 rev_hist_lm..svb_outstanding
 
+SELECT *
+FROM rev_hist_lm..svb_outstanding noholdlock
+\bcp -S CPDB4 rev_hist_lm..svb_outstanding
+
+SELECT *
+FROM rev_hist..svb_outstanding noholdlock
+\bcp -S CPDB2 rev_hist..svb_outstanding
+
+SELECT *
+FROM rev_hist..svb_outstanding noholdlock
+\bcp -S CPDB4 rev_hist..svb_outstanding
+
 SELECT reference_num, service_type, shipper_num, convert(varchar(50),conv_time_date,121) as conv_time_date, employee_num, status, convert(varchar(50),scan_time_date,121) as scan_time_date, terminal_num
 , pickup_shipper_num, postal_code, additional_serv_flag, mod10b_fail_flag, multiple_barcode_flag, multiple_shipper_flag
 , comments_flag, convert(varchar(50),inserted_on_cons,121) as inserted_on_cons, convert(varchar(50),updated_on_cons,121) as updated_on_cons
 FROM lmscan.dbo.tttl_ev_event noholdlock
-where inserted_on_cons >= '2019-02-02' and inserted_on_cons < '2019-04-01'
-\bcp -S CPSYBTEST lmscan.dbo.tttl_ev_event_new
+where inserted_on_cons >= '2019-11-26'
+and inserted_on_cons < '2019-11-27'
+\bcp -S CPSYBTEST lmscan.dbo.tttl_ev_event
 
 SELECT reference_num, service_type, shipper_num, convert(varchar(50),conv_time_date,121) as conv_time_date, employee_num, status, convert(varchar(50),scan_time_date,121) as scan_time_date, terminal_num
 , pickup_shipper_num, postal_code, additional_serv_flag, mod10b_fail_flag, multiple_barcode_flag, multiple_shipper_flag
@@ -137,6 +161,18 @@ select top 1 conv_time_date, employee_num, delivery_rec_num, multiple_del_rec_fl
 from cpscan..tttl_dr_delivery_record
 where conv_time_date = '2019-04-12 11:47:28.000' and employee_num='E43343'
 \bcp -S CPSYBTEST cpscan.dbo.tttl_dr_delivery_record
+
+select *
+from tempdb5.guest.svp_parcel
+\bcp -S CPSYBTEST tempdb5.guest.svp_parcel
+
+select *
+from tempdb7..bk_cp_cpscan_delrec_200210_2006
+\bcp -S CPSYBTEST cpscan.dbo.bk_cp_cpscan_delrec_200210_2006
+
+select t.* from cpscan..bk_cp_cpscan_delrec_200210_2006 b
+inner join cpscan..tttl_dr_delivery_record t on b.conv_time_date = t.conv_time_date and t.employee_num = b.employee_num and t.delivery_rec_num = b.delivery_rec_num
+\bcp -S CPDB1 cpscan.dbo.tttl_dr_delivery_record
 
 -------------------------------------------------------------------
 

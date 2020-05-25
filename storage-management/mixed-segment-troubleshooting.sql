@@ -61,7 +61,7 @@ go
 --go
 --dbcc dbrepair(canada_post, remap)
 --go
---dbcc dbreboot(reboot,canada_post )
+--dbcc dbreboot(reboot,cpscan )
 --go
 --DBCC DBREPAIR(canada_post, fixlogfreespace, scanlogchain )
 --go

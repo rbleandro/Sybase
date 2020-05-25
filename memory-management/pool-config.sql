@@ -1,6 +1,13 @@
 exec sp_helpcache
 go
 
+--THE CONFIG BELOW IS FOR A SERVER WITH THE FOLLOWING MEMORY AMOUNT-----------
+[sybase@CPDB1 data]$ free -m
+              total        used        free      shared  buff/cache   available
+Mem:         386765      364153       15220        4105        7392       15960
+Swap:          4095         454        3641
+------------------------------------------------------------------------------
+
 sp_poolconfig 'default data cache'
 go
 sp_poolconfig 'tempdb0'

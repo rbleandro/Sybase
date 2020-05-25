@@ -28,6 +28,7 @@ go
 --Following steps are to start replicating a new database that has never been configured for replication before.
 --============================================================================================================================================================================================================
 --Configure replication for all databases through rs_init. The rs_init will create the threads for the log reader agent and create the logical connection to the specified database.
+--Make sure you specify the correct values for parameter rs.rs_needs_repagent according to your setup.
 
 cd /opt/sybase/REP-15_5/install/
 ./rs_init -r /opt/sybase/cron_scripts/replication_setup/CPDB1_hub_db_setupdb.rs

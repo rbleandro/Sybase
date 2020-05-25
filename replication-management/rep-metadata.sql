@@ -138,6 +138,8 @@ go | grep "dsi_command_convert"
 admin config,"connection",CPIQ,svp_cp_iq_conn1
 go | grep "dsi_row_count_validation"
 
+admin config
+go | egrep "sqt_max_cache_size"
 admin config,"connection",CPDB4,canada_post
 go | egrep "dsi_bulk_copy|dsi_compile_enable|dist_sqt_max_cache_size|dsi_sqt_max_cache_size"
 admin config,"connection",CPDB4,lm_stage
@@ -147,6 +149,8 @@ go | egrep "dsi_bulk_copy|dsi_compile_enable|dist_sqt_max_cache_size|dsi_sqt_max
 admin config,"connection",CPDB4,svp_cp
 go | egrep "dsi_bulk_copy|dsi_compile_enable|dist_sqt_max_cache_size|dsi_sqt_max_cache_size"
 admin config,"connection",CPDB4,canshipws
+go | egrep "dsi_bulk_copy|dsi_compile_enable|dist_sqt_max_cache_size|dsi_sqt_max_cache_size"
+admin config,"connection",CPDB4,cmf_data
 go | egrep "dsi_bulk_copy|dsi_compile_enable|dist_sqt_max_cache_size|dsi_sqt_max_cache_size"
 
 admin config,"connection",CPDB2,canada_post

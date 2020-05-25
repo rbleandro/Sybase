@@ -1,0 +1,4218 @@
+/*
+16.0 SP03 PL06/EBF 28334 SMP/P/x86_64/SLES 11.1/ase160sp03pl06x/3457/64-bit/OPT/Mon Nov 26 02:57:13 2018
+
+Confidential property of SAP AG or an SAP affiliate company.
+Copyright 2018
+SAP AG or an SAP affiliate company.  All rights reserved.
+Unpublished rights reserved under U.S. copyright laws.
+
+This software contains confidential and trade secret information of SAP AG or
+an SAP affiliate company.  Use,  duplication or disclosure of the software and
+documentation by the  U.S.  Government is subject to restrictions set forth
+in a license agreement between the Government and SAP AG or an SAP affiliate
+company,  or other written agreement specifying the Government's rights to
+use the software and any applicable FAR provisions, for example, FAR 52.227-19.
+SAP AG or an SAP affiliate company
+*/
+
+declare @retval int
+exec @retval = sp_version 'installsecurity', NULL, '16.0 SP03 PL06/EBF 28334 SMP/P/x86_64/SLES 11.1/ase160sp03pl06x/3457/64-bit/OPT/Mon Nov 26 02:57:13 2018', 'start'
+if (@retval != 0) select syb_quit()
+go
+
+declare @script_versnum int
+select @script_versnum = 16000
+if (@@version_number < @script_versnum)
+begin
+	print "'installsecurity' is being run on an older ASE installation. ASE version '%1!', install scripts version '%2!'.",
+		@@version_number, @script_versnum
+	select syb_quit()
+end
+go
+
+declare @do_quit int
+select @do_quit = 0
+if exists (select 1 from master..sysdatabases where name = 'master')
+	begin
+		if (check_db_upgrade('master') = 0)
+		begin
+			print "'installsecurity' cannot continue, because 'master' database is not upgraded to correct version."
+			select @do_quit = 1
+		end
+	end
+if exists (select 1 from master..sysdatabases where name = 'sybsystemprocs')
+	begin
+		if (check_db_upgrade('sybsystemprocs') = 0)
+		begin
+			print "'installsecurity' cannot continue, because 'sybsystemprocs' database is not upgraded to correct version."
+			select @do_quit = 1
+		end
+	end
+if exists (select 1 from master..sysdatabases where name = 'sybsecurity')
+	begin
+		if (check_db_upgrade('sybsecurity') = 0)
+		begin
+			print "'installsecurity' cannot continue, because 'sybsecurity' database is not upgraded to correct version."
+			select @do_quit = 1
+		end
+	end
+if (@do_quit = 1)
+	select syb_quit()
+go
+
+use master
+go
+
+
+declare @gran_perm int
+select @gran_perm = value from syscurconfigs
+where config = 526
+if (@gran_perm = 0)
+begin
+        if (has_role('sa_role', 0) = 0
+           or has_role('sso_role', 0) = 0)
+        begin
+                print "You must possess System Administrator (SA) role and System Security Officer (SSO) role to run the installsecurity script."
+                select syb_quit()
+        end
+end
+else
+begin
+        if (has_role('sa_serverprivs_role', 0) = 0)
+        begin
+                print "You must possess sa_serverprivs_role to run the installsecurity script."
+                select syb_quit()
+        end
+end
+go
+
+
+if exists (select *
+	from sysobjects
+		where name = 'sp_configure')
+begin
+	execute sp_configure "allow updates", 1
+end
+if exists (select *
+        from sysdatabases
+                where name = 'sybsystemprocs')
+begin
+        use sybsystemprocs
+end
+else
+begin
+        use master
+end
+go
+use master
+go
+/* Sccsid = "%Z% generic/sproc/%M% %I% %G%" */
+
+/*
+** A_AUDITOPTIONS
+**
+** This script creates and populates the sysauditoptions table in the
+** sybsecurity database.  It will be read into the installsecurity script,
+** and thus it returns to the master DB context at the end.
+**
+** History:
+**	08/24/92 (uno)	created
+**
+** Messages for "sp_a_auditoptions"
+**
+** 17142, "You need to be able to set curwrite label to data_high. This script will continue in spite of failure to set curwrite. Please rerun after setting your labels correctly."
+** 19529, "Cannot open database '%1!'. Check the availability of this database and retry the installation."
+*/
+
+set nocount on
+go
+
+use sybsecurity
+go
+
+if (db_name() != "sybsecurity")
+begin
+	/*
+	** 19529, "Cannot open database '%1!'. Check the availability of this database and retry the installation."
+	*/
+	raiserror 19529, "sybsecurity"
+	select syb_quit()
+end
+go
+
+
+
+if not exists (select * from sysobjects where name = "sysaudits_01")
+begin
+	declare @audit_disk varchar(250)
+
+	/* get the name of the device on which sybsecurity is created */
+	select @audit_disk = b.name from master..sysusages a, 
+		master..sysdevices b where a.lstart = 0 and
+		a.dbid = db_id ("sybsecurity") and 
+		a.vdevno = b.vdevno and
+		(b.status & 2) != 0
+
+	execute sp_addsegment aud_seg_01, sybsecurity, @audit_disk
+end
+go
+
+
+if not exists (select * from sysobjects where name = "sysaudits_01")
+begin
+	create table sysaudits_01 (
+		event           smallint not null,
+		eventmod        smallint not null,
+
+		spid            smallint not null,
+
+		eventtime       datetime not null,
+		sequence        smallint not null,
+		suid            int not null,
+		dbid            smallint null,
+		objid           int null,
+		xactid          binary(6) null,
+		loginname       varchar(30) null,
+		dbname          varchar(30) null,
+		objname         varchar(255) null,
+		objowner        varchar(30) null,
+
+		extrainfo       varchar(255) null,
+
+		nodeid		tinyint null
+
+		) lock allpages on aud_seg_01
+
+end
+go
+ 
+
+grant select on sysaudits_01 to sso_role
+go
+
+if not exists (select * from sysobjects where name = "sysauditoptions")
+begin
+	create table sysauditoptions
+	(	num		smallint not null,
+		val		smallint not null,
+		minval		smallint not null,
+		maxval		smallint not null,
+		name		varchar(30),
+		sval		varchar(30),
+		comment		varchar(255),
+		id              int null,
+		status          int null
+	) lock allpages
+end
+go
+
+if not exists (select 1 from sysauditoptions where name = "login")
+	insert sysauditoptions values (3, 0, 0, 3, "login", "off", 
+		"Login auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "logout")
+	insert sysauditoptions values (4, 0, 0, 3, "logout", "off", 
+		"Logout auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "login_locked")
+	insert sysauditoptions values (5, 0, 0, 3, "login_locked", "off", 
+		"Login locked auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "rpc")
+	insert sysauditoptions values (6, 0, 0, 3, "rpc", "off", 
+		"RPC connection audting", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "errors")
+	insert sysauditoptions values (13, 0, 0, 3, "errors", "off", 
+		"error auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "adhoc")
+	insert sysauditoptions values (14, 0, 0, 3, "adhoc", "off",
+		"ad hoc auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "sso_role")
+	insert sysauditoptions values (22, 0, 0, 3, "sso_role", "off",
+		"SSO role all-actions auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "oper_role")
+	insert sysauditoptions values (23, 0, 0, 3, "oper_role", "off",
+		"OPER role all-actions auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "sa_role")
+	insert sysauditoptions values (24, 0, 0, 3, "sa_role", "off",
+		"SA role all-actions auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "sybase_ts_role")
+	insert sysauditoptions values (25, 0, 0, 3, "sybase_ts_role", "off",
+		"TS role all-actions auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "navigator_role")
+	insert sysauditoptions values (26, 0, 0, 3, "navigator_role", "off",
+		"NAV role all-actions auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "replication_role")
+	insert sysauditoptions values (27, 0, 0, 3, "replication_role", "off",
+		"REP role all-actions auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "security")
+	insert sysauditoptions values (28, 0, 0, 3, "security", "off",
+		"security relevant auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "disk")
+	insert sysauditoptions values (29, 0, 0, 3, "disk", "off",
+		"disk command auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "dbcc")
+	insert sysauditoptions values (31, 0, 0, 3, "dbcc", "off",
+		"dbcc command auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "dtm_tm_role")
+	insert sysauditoptions values (32, 0, 0, 3, "dtm_tm_role", "off",
+		"DTM_TM role all-actions auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "ha_role")
+	insert sysauditoptions values (33, 0, 0, 3, "ha_role", "off",
+        	"HA role all-actions auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "quiesce")
+	insert sysauditoptions values (34, 0, 0, 3, "quiesce", "off",
+		"quiesce command auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "mount")
+	insert sysauditoptions values (35, 0, 0, 3, "mount", "off",
+		"mount command auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "unmount")
+	insert sysauditoptions values (36, 0, 0, 3, "unmount", "off",
+		"unmount command auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "mon_role")
+	insert sysauditoptions values (37, 0, 0, 3, "mon_role", "off",
+        	"MON role all-actions auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "messaging_role")
+	insert sysauditoptions values (38, 0, 0, 3, "messaging_role", "off",
+        	"Messaging role all-actions auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "js_admin_role")
+	insert sysauditoptions values (39, 0, 0, 3, "js_admin_role", "off",
+        	"JS_ADMIN role all-actions auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "js_client_role")
+	insert sysauditoptions values (40, 0, 0, 3, "js_client_role", "off",
+        	"JS_CLIENT role all-actions auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "js_user_role")
+	insert sysauditoptions values (41, 0, 0, 3, "js_user_role", "off",
+        	"JS_USER role all-actions auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "webservices_role")
+	insert sysauditoptions values (42, 0, 0, 3, "webservices_role", "off",
+        	"WEBSERVICES role all-actions auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "keycustodian_role")
+	insert sysauditoptions values (43, 0, 0, 3, "keycustodian_role", "off",
+        	"KEYCUSTODIAN role all-actions auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "password")
+	insert sysauditoptions values (44, 0, 0, 3, "password", "off",
+        	"password related auditing", null, 1)
+		
+if not exists (select 1 from sysauditoptions where name = "cluster")
+	insert sysauditoptions values (45, 0, 0, 3, "cluster", "off",
+        	"cluster admin command auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "errorlog")		
+	insert sysauditoptions values (46, 0, 0, 3, "errorlog", "off",
+		"errorlog related auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "role")
+        insert sysauditoptions values (48, 0, 0, 3, "role", "off",
+                "role related auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "role_locked")
+        insert sysauditoptions values (49, 0, 0, 3, "role_locked", "off",
+                "role locked auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "security_profile")
+        insert sysauditoptions values (50, 0, 0, 3, "security_profile", "off",
+                "login and password profile related auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "login_admin")
+        insert sysauditoptions values (51, 0, 0, 3, "login_admin", "off",
+                "create/alter/drop login auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "thread_pool")
+        insert sysauditoptions values (52, 0, 0, 3, "thread_pool", "off",
+                "create/alter/drop thread pool auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = 
+						"sproc_auth")
+        insert sysauditoptions values (53, 0, 0, 3, "sproc_auth", 
+		"off", "stored procedure authorization check", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "dump_config")
+	insert sysauditoptions values (54, 0, 0, 3, "dump_config", "off",
+		"dump configuration related auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "config_history")
+	insert sysauditoptions values (55, 0, 0, 3, "config_history", "off",
+		"configuration history", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "hadr_admin_role_gp")
+	insert sysauditoptions values (56, 0, 0, 3, "hadr_admin_role_gp", "off",
+        	"HADR_ADMIN_ROLE_GP role all-actions auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "replication_maint_role_gp")
+	insert sysauditoptions values (57, 0, 0, 3, "replication_maint_role_gp", "off",
+        	"REPLICATION_MAINT_ROLE_GP all-actions auditing", null, 1)
+			
+if not exists (select 1 from sysauditoptions where name = "autotuning_rule")
+	insert sysauditoptions values (58, 0, 0, 3, "autotuning_rule", "off",
+		"create autotuning rule /drop autotuning rule auditing", null, 1)
+
+if not exists (select 1 from sysauditoptions where name = "all")
+	insert sysauditoptions values (59, 0, 0, 3, "all", "off",
+		"all actions auditing", null, 1)
+
+/*This item must be the last one for sysauditoptions */
+if exists (select 1 from sysauditoptions where id = null and status = null)
+	update sysauditoptions set status = 1 where id = null and status = null
+
+grant select on sysauditoptions to sso_role
+go
+
+/*
+** Allow executing 'select into' statement in sybsecurity.
+*/
+use master
+go
+exec sp_dboption sybsecurity, "select into", true
+go
+
+use sybsecurity
+go
+
+if not exists (select * from sysobjects where name = 'ch_syscfg')
+begin
+	exec ("select * into ch_syscfg
+		from master.dbo.sysconfigures
+		where 1 = 2")
+end
+go
+
+if not exists (select * from sysobjects where name = "ch_runstatus")
+begin
+	exec ("create table ch_runstatus (
+		instanceid	tinyint NULL,
+		runstatus	int NOT NULL)")
+end
+go
+
+use sybsystemprocs
+go
+
+if (db_name() != "sybsystemprocs")
+begin
+	/*
+	** 19529, "Cannot open database '%1!'. Check the availability of this database and retry the installation."
+	*/
+	raiserror 19529, "sybsystemprocs"
+	select syb_quit()
+end
+go
+
+
+set nocount off
+go
+dump transaction master with truncate_only
+go
+dump transaction sybsystemprocs with truncate_only
+go
+print "Installing sp_addauditrecord"
+go
+
+
+/*
+**  ADDAUDITRECORD
+**
+**  This purpose of this procedure is to send an "ad-hoc" audit record to
+**  sybsecurity..sysaudits.  An "ad-hoc" record is really just a structured
+**  comment about anything, usually related to auditing but not necessarily so.
+**  This procedure simply calls the ad_hoc_audit() builtin and receives
+**  a return code indicating whether the record actually was sent to the
+**  audit trail.  You may be wondering why this proc even exists, because it
+**  seems as though the user can simply call ad_hoc_audit().  Well, that
+**  builtin will check to see that the caller is the "sp_addauditrecord"
+**  procedure in master.  This provides a means of DAC-protecting execute
+**  permissions, whereas builtins do not provide this checking.
+**
+**  Parameters:
+**	@text		message text to send
+**	@db_name	database name to send
+**	@obj_name	object name to send
+**	@owner_name	owner name to send
+**	@dbid		dbid to send
+**	@objid		object id to send
+**
+**  Returns: 
+**	 1  ad_hoc_audit() was never called (because auditing wasn't enabled)
+**	 0  the audit record was sent to sysaudits
+**	-1  an error occurred before calling ad_hoc_audit()
+**
+**  Side Effects:
+**	May write a record to sysaudits
+**
+**  History:
+**	08/24/92 (uno)	written
+*/
+create or replace procedure sp_addauditrecord
+@text varchar(255) = NULL,	/* message text */
+@db_name varchar(255) = NULL,	/* database name */
+@obj_name varchar(255) = NULL,	/* object name */
+@owner_name varchar(255) = NULL,/* owner name */
+@dbid int = NULL,		/* database id */
+@objid int = NULL		/* object id */
+as
+declare	@returncode int		/* return from builtin */
+declare	@eventnum int		/* event number for ad_hoc_auditing */
+/* event type for ad_hoc_auditing which is always not aplicable i.e 0 */
+declare	@mod int		
+
+
+select	@eventnum = 1		
+select	@mod = 0		
+
+if ((@dbid is not NULL) and (@db_name is not NULL))
+begin
+	if (@dbid != db_id(@db_name))
+	begin
+		/*
+		** 18968, "The database '%1!' does not have a database id of '%2!'."
+		*/
+		raiserror 18968, @db_name, @dbid
+		return (1)
+	end 
+end
+
+if ((@objid is not NULL) and (@obj_name is not NULL))
+begin
+	if (@objid != object_id(@obj_name))
+	begin
+		/*
+		** 18969, "The object '%1!' does not have an object id of '%2!'."
+		*/
+		raiserror 18969, @obj_name, @objid
+		return (1)
+	end 
+end
+
+select @returncode =
+	ad_hoc_audit (@eventnum, @mod, @text, @db_name, @obj_name, @owner_name, 
+			@dbid, @objid
+			)
+return (@returncode)
+go
+exec sp_procxmode 'sp_addauditrecord', 'anymode'
+go
+grant execute on sp_addauditrecord to sso_role
+go
+dump transaction master with truncate_only
+go
+dump transaction sybsystemprocs with truncate_only
+go
+print "Installing sp_audit"
+go
+
+/* Sccsid = "%Z% generic/sproc/src/%M% %I% %G%" */
+/*	11.0	6.0	08/02/95	sproc/src/audit */
+
+/*
+**	Messages for sp_audit
+**
+** 18221, "Setting must be 'off', 'on', 'pass', 'fail'"
+** 18222, "Object name must be 'all'"
+** 18223, "User auditing for '%1!' is '%2!'"
+** 18224, "'%1!' is not a valid login name or role name"
+** 18225, "Login name must be 'all'"
+** 18241, "'%1!' is not a valid database name"
+** 18226, "'%1!' is not a valid login name"
+** 18227, "'%1!' is not in the current database"
+** 18228, "'%1!' is not a valid object name"
+** 18229, "'%1!' is not a valid audit option"
+** 18230, "Role auditing for '%1!' is '%2!'"
+** 18231, "Server wide auditing '%1!' is '%2!'"
+** 18232, "Default auditing '%1!' for '%2!' in database '%3!' is '%4!'"
+** 18233, "Database specific auditing '%1!' in database '%2!' is '%3!'"
+** 18234, "User specific auditing '%1!' for user '%2!' is '%3!'"
+** 18235, "Object specific auditing '%1!' for object '%2!' is '%3!'"
+** 18236, "Error updating the audit flags.  This is a system error.
+**	   Contact an SA-role user."
+** 18237, "Error with spt_values table. This is a system error. Contact 
+**	   an SA-role user."
+** 18926, "Audit process successfully restarted."
+** 18927, "Invalid auditing configuration parameters."
+** 18928, "Audit process is already being restarted."
+** 18929, "Audit process has not terminated."
+** 18930, "Cannot create the audit process. See error log for details."
+** 18931, "Unknown error '%1!' occurred when trying to 
+** 	   restart the audit process."
+** 17260, "Can't run %1! from within a transaction."
+** 17977, "'%1!' does not exist."
+** 17981, "Error updating the audit flags in the system catalogs.  This is a
+**	   system error.  Contact an SA-role user."
+** 17982, "Audit option has been changed and has taken effect immediately."
+** 17983, "Audit option has been changed and will take effect after a reboot."
+*/
+
+create or replace procedure sp_audit
+@option varchar(30) = NULL,		/* audit option name */
+@login_name varchar(255) = NULL,		/* login name or role name */
+@object_name varchar(767) = NULL,	/* object name or database name */
+@setting varchar(30) = NULL		/* audit option setting */
+as
+
+declare @tmpstr varchar(767)		/* temporary string */
+declare @msg varchar(1024)		/* for sp_getmessage */
+declare @auditflags int			/* current audit option settings */
+declare @auditflags_oldvalue int	/* for option change auditing */
+declare @auditflags_newvalue int	/* for option change auditing */
+declare @updatecatalog int		/* system catalog to access */
+declare @sysauditoptions int		/* sysauditoptions catalog */
+declare @syslogins int			/* syslogins catalog */
+declare @sysdatabases int		/* sysdatabases catalog */
+declare @sysobjects int			/* sysobjects catalog in current database */
+declare @settingflags int		/* bit settings converted from @setting */
+declare @returncode int			/* return code from built-in audit_option() */
+declare @optnum int			/* option number parameter for audit_option() */
+declare @optstat int			/* status parameter for audit_option() */
+declare @ao_dbref int			/* arg for audit_option to update database auditing */
+declare @ao_dbref2 int			/* arg for audit_option to update new database audit options */
+declare @ao_def_tab int			/* arg for audit_option to update default tables */
+declare @ao_def_view int		/* arg for audit_option to update default views */
+declare @ao_def_sproc int		/* arg for audit_option to update default procs/trig */
+declare @ao_object int			/* arg for audit_option to update objects */
+declare @ao_lgopts int			/* arg for audit_option to update user logins */
+declare @ao_restart int			/* arg for audit_option to re-start audit process */
+declare @spt_mask int			/* bit offset for audit option */
+declare @spt_type char			/* major character for spt_values table */
+declare @spt_setting char		/* minor character for valid settings */
+declare @spt_user char			/* minor character for user specific auditing */
+declare @spt_db char			/* minor character for database specific auditing */
+declare @spt_obj char			/* minor character for object specific auditing */
+declare @max_s_audit int		/* max pass auditable option */
+declare @max_f_audit int		/* max fail auditable option */
+declare @pass_mask int                  /* bit mask for pass audit option */
+declare @fail_mask int                  /* bit mask for pass audit option */
+declare @dummy	int
+declare @nullarg varchar(1)		/* Passing NULL as an argument */
+declare @gp_enabled int
+declare @passbit int		    /* if pass bit is set in auditflag */
+declare @failbit int		    /* if fail bit is set in auditflag */
+declare @cha_area	varchar(10)	/* for configuration history auditing */
+declare @cha_type	varchar(30)
+declare @cha_target	varchar(30)
+declare @cha_element	varchar(255)
+declare @cha_oldvalue	varchar(255)
+declare @cha_newvalue	varchar(255)
+declare @cha_mode	varchar(10)
+declare @cha_instanceid	int
+declare @cha_ret	int
+declare @status 	int
+declare @id 		int
+declare @num 		int
+declare @val 		int
+declare @minval 	int
+declare @maxval 	int
+declare @name 		varchar(30)
+declare @sval 		varchar(30)
+declare @comment 	varchar(30)
+declare @srid 		int
+declare @second_catalog int		/* another system catalog to access, only used for option 'all' */
+/*
+** Initialize values for spt_values table and system catalogs.
+*/
+select @spt_type = 'Z'
+select @spt_setting = 's'
+select @spt_user = 'u'
+select @spt_db = 'd'
+select @spt_obj = 'o'
+select @sysauditoptions = 1
+select @syslogins = 2
+select @sysdatabases = 3
+select @sysobjects = 4
+select @ao_dbref = 200
+select @ao_def_tab = 201
+select @ao_def_view = 202
+select @ao_def_sproc = 203
+select @ao_object = 204
+select @ao_lgopts = 205
+select @ao_restart = 206
+select @ao_dbref2 = 207
+select @status = 0
+select @id = NULL 
+select @max_s_audit=hextoint("0x40000000")
+select @max_f_audit=hextoint("0x80000000")
+
+/*
+**  If we're in a transaction, disallow this since it might make recovery
+**  impossible.
+*/
+if (@@trancount > 0)
+begin
+	/* 17260, "Can't run %1 from within a transaction." */
+	raiserror 17260, "sp_audit"
+	return (1)
+end
+else
+begin
+	set transaction isolation level 1
+	set chained off
+end
+
+/* check if user has sso role, proc_role will also do auditing
+** if required. proc_role will also print error message if required.
+*/
+
+select @nullarg = NULL
+execute @returncode = sp_aux_checkroleperm "sso_role",
+	"manage auditing", @nullarg, @gp_enabled output
+
+if (@gp_enabled = 0)
+begin
+	if (proc_role("sso_role") = 0) return 1
+end
+else
+begin
+	select @dummy = proc_auditperm("manage auditing", @returncode)
+end
+
+if (@returncode != 0)
+	return 1
+
+set nocount on
+
+/*
+** Convert audit option to lower case with no leading/trailing blanks.
+*/
+if (@option is not NULL)
+	select @option = lower(ltrim(rtrim(@option)))
+
+/*
+** Validate the parameters. The audit option, login_name and object_name
+** are required fields for all but the 'restart' option. If less than
+** 4 arguments have been specified, then print syntax with values for
+** each argument. 
+*/
+if (@option = "restart")
+begin
+	if (@login_name is not NULL)
+	begin
+		print "Syntax: sp_audit restart"
+		return (1)
+	end
+end
+else
+begin
+	if (@object_name is NULL)
+	begin
+		print "Syntax: sp_audit option, login_name, object_name [, setting]"
+		print "  option = {adhoc|all|alter|bcp|bind|cmdtext|config_history|create|dbaccess|dbcc|delete|disk|"
+		print "            drop|dump|dump_config|encryption_key|errors|exec_procedure|exec_trigger|func_obj_access|"
+		print "            func_dbaccess|grant|insert|install|remove|load|security_profile|login_admin|"
+		print "            login|login_locked|logout|reference|restart|revoke|role|role_locked|rpc|security|select|cluster|"
+		print "            setuser|sproc_auth|table_access|truncate|unbind|update|view_access|quiesce|mount|unmount|"
+		print "	           password|errorlog|transfer_table|thread_pool|autotuning_rule|deny|allow}"
+		print "  login_name = {all|<server_login_name>|<server_role_name>}"
+		print "  object_name = {all|default{table|view|procedure|trigger}|<object_name>}"
+		print "  setting = [off|on|pass|fail]"
+		return (1)
+	end
+
+	/*
+	** Convert login name only if it is "all".
+	*/
+	select @tmpstr = lower(ltrim(rtrim(@login_name)))
+	if (@tmpstr = "all")
+	begin
+		select @login_name = @tmpstr
+		select @status = 1 /* AOS_ALL_LOGINS_ROLES in auditoption.h */
+	end
+
+	/*
+	** Convert object name only if it is "all", or "default %".
+	*/
+	select @tmpstr = lower(ltrim(rtrim(@object_name)))
+	if (@tmpstr in ("all", "default table", "default view", 
+			"default procedure", "default trigger"))
+		select @object_name = @tmpstr
+
+	/*
+	** Convert setting to lower case with no leading/trailing blanks.
+	*/
+	if (@setting is not NULL)
+		select @setting = lower(ltrim(rtrim(@setting)))
+
+	/*
+	** The setting must be valid
+	*/
+	if (@setting not in (NULL, "off", "on", "pass", "fail"))
+	begin
+		/* 18221, "Setting must be 'off', 'on', 'pass', 'fail'" */
+		raiserror 18221
+		return (1)
+	end
+end
+
+/*
+** Process auditing
+**	- all actions of a user or role 
+**	- login of a particular user or role or login of all users and roles.
+**	- login getting locked due to exceeding the number of failed login 
+**	  attempts - at login/role level or for all logins and roles
+**      - logout of particular user or role or logout of all users and roles 
+**      - login create, drop, alter, validate for particular user or for all users.
+	- all dbcc commands for particular user or role or all users and roles
+*/
+if (@option in("all", "login", "login_locked", "logout", "mount", "unmount", "role", "disk", "login_admin", "password", "dbcc", "adhoc", "errors", "errorlog", "role_locked", "thread_pool", "config_history", "dump_config", "security", "security_profile","quiesce", "rpc", "sproc_auth"))
+begin
+	/*
+	** Object name must be "all"
+	*/
+	if (@object_name != "all")
+	begin
+		/* 18222, "Object name must be 'all'" */
+		raiserror 18222
+		return (1)
+	end
+	/*
+	** The login name must either be a valid loginname or a role name. 
+	** For "login", "logout", "mount", "unmount", "role", "disk", "login_admin",
+	** "quiesce","thread_pool","role_locked", "errorlog", "errors", "config_history",
+	** "security", "security_profile" , "adhoc", "dump_config"
+	** "password", "dbcc", "rpc", "sproc_auth", "quiesce" and "login_locked" audit options, it can also be "all" 
+	** for all logins and roles. If not then return error message, 
+	** otherwise set @updatecatalog to the appropriate system catalog.
+	*/
+	select @id = suser_id(@login_name)
+	select @srid = role_id(@login_name)
+
+	if (@id is not NULL)
+	begin
+		if @option = "all"
+			begin
+				select @updatecatalog = @sysauditoptions
+				select @second_catalog = @syslogins
+			end
+		else
+			select @updatecatalog = @sysauditoptions
+	end
+	else if (@srid is not NULL)
+	begin
+		select @status = 2 /* AOS_ROLE in auditoption.h */
+		select @id = @srid
+		select @updatecatalog = @sysauditoptions
+	end
+	else if (@status = 1 and 
+		(@option in ("login","login_locked", "logout", "mount", "unmount", "role", "disk", "login_admin", "password", "dbcc", "adhoc","errors", "errorlog", "role_locked", "thread_pool", "config_history", "dump_config", "security", "security_profile", "quiesce", "rpc", "sproc_auth")))
+		select @updatecatalog = @sysauditoptions
+	else
+	begin
+		/* 18224, "'%1!' is not a valid login name or role name" */
+		raiserror 18224, @login_name
+		return (1)
+	end
+	/*
+        ** For adhoc server wide audit options, the only reasonable settings
+        ** are NULL, "off", "on". If the user specifies "pass" or "fail", we will set it
+        ** to "on".
+        */
+        if (@option in ("adhoc", "errors")) and (@setting in ("pass", "fail"))
+                select @setting = "on"
+        select @updatecatalog = @sysauditoptions
+end
+/*
+** Process server wide audit options except "login", "logout", "mount", "unmount","errors", "errorlog", "dump_config" 
+** "thread_pool", "role", "disk", "login_admin", "dbcc", "adhoc", "config_history", "security", "security_profile",
+** "login_locked", "rpc" and "quiesce", "sproc_auth" which are processsed above.
+*/
+else if (@option in ("network", "cluster", "autotuning_rule"))
+begin
+	/*
+	** Object name must be "all"
+	*/
+	if (@object_name != "all") 
+	begin 
+		/* 18222, "Object name must be 'all'" */ 
+		raiserror 18222 
+		return (1) 
+	end
+	/* 
+	** Login name must be "all" 
+	*/ 
+	if (@login_name != "all") 
+	begin 
+		/* 18225, "Login name must be 'all'" */ 
+		raiserror 18225 
+		return (1)
+	end
+	select @updatecatalog = @sysauditoptions
+end
+/*
+** Process database specific audit options.
+*/
+else if (@option in ("alter", "bcp", "bind", "create", "dbaccess", "drop",
+	 "dump", "encryption_key",
+	"func_dbaccess", "grant", "install", "remove", "load", 
+	 "revoke", "setuser", "truncate", "unbind", "deny", "allow"))
+begin
+	/*
+	** Login name must be "all"
+	*/
+	if (@login_name != "all")
+	begin
+		/* 18225, "Login name must be 'all'" */
+		raiserror 18225
+		return (1)
+	end
+	/*
+	** Database name must exist.
+	*/
+	if (db_id(@object_name) is NULL)
+	begin
+		/* 18241, "'%1!' is not a valid database name" */
+		raiserror 18241, @object_name
+		return (1)
+	end
+	select @updatecatalog = @sysdatabases
+end
+/*
+** Process user specific audit options.
+*/
+else if (@option in ("table_access", "view_access", "cmdtext"))
+begin
+	/*
+	** Object name must be "all"
+	*/
+	if (@object_name != "all")
+	begin
+		/* 18222, "Object name must be 'all'" */
+		raiserror 18222
+		return (1)
+	end
+	/*
+	** Login name must be a valid server user name.
+	*/
+	if (suser_id(@login_name) is NULL)
+	begin
+		/* 18226, "'%1!' is not a valid login name" */
+		raiserror 18226, @login_name
+		return (1)
+	end
+	/*
+	** For cmdtext audit option, the only reasonable settings
+	** are NULL, "off", "on". If the user specifies "pass" or "fail", 
+	** we will set it to "on".
+	*/
+	if ((@option = "cmdtext") and (@setting in ("pass", "fail")))
+		select @setting = "on"
+
+	select @updatecatalog = @syslogins
+end
+/*
+** Process object specific audit options.
+*/
+else if (@option in ("delete", "func_obj_access", "insert", "select", "update",
+	 "exec_procedure", "exec_trigger", "reference","transfer_table"
+	))
+begin
+	/*
+	** Login name must be "all"
+	*/
+	if (@login_name != "all")
+	begin
+		/* 18225, "Login name must be 'all'" */
+		raiserror 18225
+		return (1)
+	end
+	if (@object_name like "%.%.%") and
+        	(substring(@object_name, 1, charindex(".", @object_name) - 1) != db_name())
+	begin
+		/* 18227, "'%1!' is not in the current database" */
+		raiserror 18227, @object_name
+		return (1)
+	end
+	/*
+	** Process table and view objects.
+	*/
+	if (@option in ("delete", "insert", "select", "update" 
+		,"transfer_table"))
+--	))
+	begin
+		/*
+		** For default tables and views, set @updatacatalog to sysdatabases. Otherwise
+		** find the specified table/view object in the current database. If found, set
+		** @updatecatalog to sysobjects. If not found, then return error.
+		*/
+		if (@object_name in ("default table", "default view"))
+			select @updatecatalog = @sysdatabases
+		else if ((select count(*) from sysobjects where id = object_id(@object_name) and
+			 type in ('S', 'U', 'V')) = 1)
+			select @updatecatalog = @sysobjects
+		else
+		begin
+			/* 18228, "'%1!' is not a valid object name" */
+			raiserror 18228, @object_name
+			return (1)
+		end
+	end
+	else if (@option = "reference")
+	begin
+		/*
+		** For default tables, set @updatacatalog to sysdatabases. Otherwise
+		** find the specified table in the current database. If found, set
+		** @updatecatalog to sysobjects. If not found, then return error.
+		*/
+		if (@object_name = "default table")
+			select @updatecatalog = @sysdatabases
+		else if ((select count(*) from sysobjects where id = object_id(@object_name) and
+			 type in ('S', 'U')) = 1)
+			select @updatecatalog = @sysobjects
+		else
+		begin
+			/* 18228, "'%1!' is not a valid object name" */
+			raiserror 18228, @object_name
+			return (1)
+		end
+	end
+	/*
+	** Process procedure objects.
+	*/
+	else if (@option like "%exec_procedure")
+	begin
+		/*
+		** For default procedures, set @updatecatalog to sysdatabases. Otherwise
+		** find the specified procedure in the current database. If found, set
+		** @updatecatalog to sysobjects. If not found, then return error.
+		*/
+		if (@object_name = "default procedure")
+			select @updatecatalog = @sysdatabases
+		else if ((select count (*) from sysobjects where id = object_id(@object_name) and
+			 type in ('P', 'XP')) = 1)
+			select @updatecatalog = @sysobjects
+		else
+		begin
+			/* 18228, "'%1!' is not a valid object name" */
+			raiserror 18228, @object_name
+			return (1)
+		end
+	end
+	/*
+	** Process trigger objects.
+	*/
+	else if (@option like "%exec_trigger")
+	begin
+		/*
+		** For default triggers, set @updatecatalog to sysdatabases. Otherwise
+		** find the specified trigger in the current database. If found, set
+		** @updatecatalog to sysobjects. If not found, then return error.
+		*/
+		if (@object_name = "default trigger")
+			select @updatecatalog = @sysdatabases
+		else if ((select count (*) from sysobjects where id = object_id(@object_name) and
+			 (type = 'TR' or type = 'IT')) = 1)
+			select @updatecatalog = @sysobjects
+		else
+		begin
+			/* 18228, "'%1!' is not a valid object name" */
+			raiserror 18228, @object_name
+			return (1)
+		end
+	end
+	/*
+	** process access to any objects through builtin
+	*/
+	else if (@option = "func_obj_access")
+	begin
+		if ((select count (*) from sysobjects where id 
+				= object_id(@object_name)) = 1)
+			select @updatecatalog = @sysobjects
+		else
+		begin
+			/* 18228, "'%1!' is not a valid object name" */
+			raiserror 18228, @object_name
+			return (1)
+		end
+	end
+
+end
+else if (@option = "restart")
+begin
+	/*
+	** The 'restart' option is unlike most of the other auditing
+	** options. Rather than turning a particular auditing option on
+	** or off, it is used to re-start the audit process after it has
+	** been abnormally terminated. 
+	** 
+	** Call the audit_option() builtin to re-start the audit process.
+	*/
+	select @returncode = audit_option(@ao_restart, 0, 0, 0, 0)
+	if (@returncode = 1)
+	begin
+		/* 18926, "Audit process successfully restarted." */
+		exec sp_getmessage 18926, @msg output
+		print @msg, @option, @tmpstr
+		return (0)
+	end
+	else if (@returncode = -1)
+		/* 18927, "Invalid auditing configuration parameters." */
+		raiserror 18927
+	else if (@returncode = -2)
+		/* 18928, "Audit process is already being restarted." */
+		raiserror 18928
+	else if (@returncode = -3)
+		/* 18929, "Audit process has not terminated." */
+		raiserror 18929
+	else if (@returncode = -4)
+		/*
+		** 18930, "Cannot create the audit process. See error
+		** log for details."
+		*/
+		raiserror 18930
+	else
+		/*
+		** 18931, "Unknown error '%1!' occurred when trying to 
+		** restart the audit process."
+		*/
+		raiserror 18931, @returncode
+	return (1)
+end
+/*
+** Invalid audit option.
+*/
+else
+begin
+	/* 18229, "'%1!' is not a valid audit option" */
+	raiserror 18229, @option
+	return (1)
+end
+
+/*
+** If setting an audit option, then convert the @setting parameter (varchar) to
+** an integer. This will be used to set the appropriate bits in the audit flag.
+*/
+if (@setting is not NULL)
+begin
+	select @settingflags = number from master.dbo.spt_values
+		where type = @spt_type+@spt_setting and name = @setting
+	/*
+	** Internal error if expected row in spt_values not found.
+	*/
+	if (@settingflags is NULL)
+	begin
+		/* 18237, "Error with spt_values table. This is a system error. Contact an SA-role user." */
+		raiserror 18237
+		return (1)
+	end
+end
+
+/*
+** Process access to sysauditoptions system catalog.
+*/
+if (@updatecatalog = @sysauditoptions)
+begin
+	/* 
+	** For auditing all actions of a role, set the @option to the role name, 
+	** otherwise the @option would already contain the audit option name. 
+	*/
+	declare @role_aud int	/* 1 = auditing roles, 0 = server wide auditing */
+	if (@status = 2)
+		select @role_aud = 1
+	else
+		select @role_aud = 0
+
+	select @tmpstr = 'off'
+	select @auditflags = val, @tmpstr = sval 
+	from sybsecurity.dbo.sysauditoptions
+		where name = @option and id = @id
+
+	/*
+	** Set the @auditflags to 0 (if previously NULL), so that we can do 
+	** bitwise AND correctly. For "login", "logout", "login_locked", "role", "disk", "login_admin", "thread_pool", 
+	** "role_locked","errorlog", "mount", "password", "dbcc", "adhoc","errors", "config_history", "dump_config", 
+	** "quiesce", "security","security_profile", "rpc", "sproc_auth", "quiesce" and "unmount" audit options 
+	** at login/role level it maybe NULL as this maybe the first time the 
+	** option is being set for that login/role.
+	*/
+	if (@auditflags is NULL)
+		select @auditflags = 0
+
+	select @auditflags_oldvalue = @auditflags
+
+	/*
+	** Display the current setting role auditing or server wide auditing.
+	*/
+	if (@setting is NULL)
+	begin
+		if (@role_aud = 1)
+		begin
+			/* 18230, "Role auditing for '%1!' is '%2!'" */
+			exec sp_getmessage 18230, @msg output
+			print @msg, @option, @tmpstr
+		end
+		else
+		begin
+			/* 18231, "Server wide auditing '%1!' is '%2!'" */
+			exec sp_getmessage 18231, @msg output
+			print @msg, @option, @tmpstr
+		end
+		return (0)
+	end
+	/*
+	** If the setting is "off", then clear the audit option bits corresponding to the specified
+	** audit option, otherwise set the audit option bits.
+	*/
+	if (@setting = "off")
+		select @auditflags = 0
+	else
+	begin
+		select @auditflags = (@settingflags | @auditflags)
+		if (@auditflags = 3)
+			select @setting = "on"
+	end
+	select @auditflags_newvalue = @auditflags
+	/*
+	** Update the current setting for the specified audit option. If an 
+	** update error occurred, then rollback the transaction.
+	** If it is for the specified login name not having a row in 
+	** sysauditoptions, generate a new record for the login.
+	** If the login name is 'all', change the setting for only that row 
+	** having the value for all logins and roles, ie. which has status = 1.
+	** When the setting is changed for "all" logins and roles for "login", "disk", "password", "errors", "dump_config", "rpc", 
+	** "logout", "login_locked", "role", "login_admin", "mount" , "dbcc", "adhoc", "role_locked", "config_history", "unmount"  
+	** or "quiesce" audit options other rows which are at granular
+	** level(role or login) are not affected. So, for either case in 
+	** following transaction, there should be only one row affected. 
+	*/
+	begin transaction
+	if (@id is not NULL) and not exists (select 1 
+				from sybsecurity.dbo.sysauditoptions 
+				where name = @option and id = @id and status = @status)
+	begin
+		/* 
+		** Specified login or role doesn't have a row in 
+		** sysauditoptions. Enter a new row for it.
+		*/
+		select @num = num, @minval = minval, @maxval = maxval, 
+		        @comment = comment
+		from sybsecurity.dbo.sysauditoptions where name = @option
+
+		insert into sybsecurity.dbo.sysauditoptions values(@num, 
+			@auditflags, @minval, @maxval, @option, @setting, 
+			@comment, @id, @status)
+	end
+	else /* Here @id = NULL for "all" and @id = login/role id otherwise */
+		/* 
+		** Row already exists in sysauditoptions for "all" logins/roles,
+		** a particular login or role. Update to new settings
+		*/
+		update sybsecurity.dbo.sysauditoptions
+		set val = @auditflags, sval = @setting 
+			where name = @option and id = @id and status = @status
+
+	if (@@rowcount != 1)
+	begin
+		/*
+		** 17981, "Error updating the audit flags in the system catalogs.  This
+		**	   is a system error.  Contact an SA-role user."
+		*/
+		rollback transaction
+		raiserror 17981
+		return (1)
+	end
+	commit transaction
+
+	if ((@option = "config_history") and (@setting = "off") and
+		(@auditflags_oldvalue != @auditflags_newvalue))
+	begin
+		select @cha_area = "AUDIT"
+		select @cha_type = "config history auditing"
+		select @cha_target = NULL
+		select @cha_element = NULL
+		select @cha_oldvalue = "on"
+		select @cha_newvalue = "off"
+		select @cha_mode = NULL
+		select @cha_instanceid = NULL
+
+		select @cha_ret = audit_config_history(
+			@cha_area,
+			@cha_type,
+			@cha_target,
+			@cha_element,
+			@cha_oldvalue,
+			@cha_newvalue,
+			@cha_mode,
+			@cha_instanceid)
+	end
+
+	/*
+	** Update audit option in server memory, save the return code.
+	*/
+	select @optnum = num, @optstat = status
+		from sybsecurity.dbo.sysauditoptions
+		where name = @option and id = @id
+
+	select @returncode = audit_option(@optnum, @auditflags, @optstat, @id, 0)
+
+	if ((@option = "config_history") and (@setting = "on") and
+		(@auditflags_oldvalue != @auditflags_newvalue))
+	begin
+		select @cha_area = "AUDIT"
+		select @cha_type = "config history auditing"
+		select @cha_target = NULL
+		select @cha_element = NULL
+		select @cha_oldvalue = "off"
+		select @cha_newvalue = "on"
+		select @cha_mode = NULL
+		select @cha_instanceid = NULL
+
+		select @cha_ret = audit_config_history(
+			@cha_area,
+			@cha_type,
+			@cha_target,
+			@cha_element,
+			@cha_oldvalue,
+			@cha_newvalue,
+			@cha_mode,
+			@cha_instanceid)
+	end
+	
+	/* 
+	** Row already exists in sysauditoptions for auditing all actions  of 
+	** specified role/login, delete the row when turn it off to avoid keeping redundant 
+	** information in sysauditoptions.
+	*/ 
+	if ((@id is not NULL) and (@status = 2 or @status = 0) and (@auditflags = 0))
+		delete from sybsecurity.dbo.sysauditoptions
+			where name = @option and  id = @id and status = @status
+	/* 
+	** The following piece of code is to keep existing behavior that when configure audit  
+	** option 'all' for user logins, both syslogins and sysauditoptions need to be updated.
+	*/
+	if (@second_catalog = @syslogins)
+	begin 
+		/*
+		** Retrieve the current audit flag from the row corresponding to the user name
+		** in syslogins system catalog.
+		*/
+		select @auditflags = audflags from master.dbo.syslogins
+			where suid = suser_id(@login_name)
+		/*
+		** Set the @auditflags to 0 (if previously NULL), so that we can do bitwise AND
+		** correctly. At server installation, the audflags in syslogins is NULL.
+		*/
+		if (@auditflags is NULL)
+			select @auditflags = 0
+		/*
+		** Get the bit offset from spt_values table.
+		*/
+		select @spt_mask = number from master.dbo.spt_values
+			where name = @option and type = @spt_type+@spt_user
+		/*
+		** Assign the pass and failed masks. To avoid arithmetic overflow, 
+		** the highest option is hard coded.
+		*/
+		if (@spt_mask >= @max_s_audit)
+			select @pass_mask = @max_s_audit, @fail_mask = @max_f_audit
+		else
+			select @pass_mask = @spt_mask, @fail_mask = @spt_mask * 2
+		/*
+		** If the setting is "off", then clear the audit option bits corresponding to the specified
+		** audit option by masking out the 2 bits (pass, fail) indicated by the mask and leaving
+		** the remaining bits unchanged. If the setting is not "off", then OR in the setting (pass,
+		** fail, on) into the audit option bits of the auditflags.
+		*/
+		if (@setting = 'off')
+			select @auditflags = ~(@pass_mask | @fail_mask) & @auditflags   
+		else if (@setting = 'on')
+			select @auditflags = @pass_mask | @fail_mask | @auditflags
+		else if (@setting = 'pass')
+			select @auditflags = @pass_mask | @auditflags
+		else if (@setting = 'fail')
+			select @auditflags = @fail_mask | @auditflags
+	
+		/*
+		** Update the current setting for the specified audit option. If an update error
+		** occurred, then rollback the transaction.
+		*/
+		begin transaction
+		update master.dbo.syslogins set audflags = @auditflags
+			where suid = suser_id(@login_name)
+		if (@@rowcount != 1)
+		begin
+			/*
+			** 17981, "Error updating the audit flags in the system catalogs.  This
+			**	   is a system error.  Contact an SA-role user."
+			*/
+			rollback transaction
+			raiserror 17981
+			return (1)
+		end
+		commit transaction
+	end
+end
+/*
+** Process access to sysdatabases system catalog.
+*/
+else if (@updatecatalog = @sysdatabases)
+begin
+	/*
+	** Retrieve the current audit flag from the appropriate audit field in
+	** sysdatabases. For default auditing, retrieve from the current database.
+	** For non-default auditing, retrieve from the specified database.
+	*/
+	if (@object_name = "default table")
+		select @auditflags = deftabaud from master.dbo.sysdatabases
+			where dbid = db_id()
+	else if (@object_name = "default view")
+		select @auditflags = defvwaud from master.dbo.sysdatabases
+			where dbid = db_id()
+	else if (@object_name in ("default procedure", "default trigger"))
+		select @auditflags = defpraud from master.dbo.sysdatabases
+			where dbid = db_id()
+	else if (@option in ("encryption_key", "deny", "allow")) 
+		/* new db-wide audit options. */
+		select @auditflags = deftabaud from master.dbo.sysdatabases
+			where dbid = db_id(@object_name)
+	else
+		select @auditflags = audflags from master.dbo.sysdatabases
+			where dbid = db_id(@object_name)
+	/*
+	** Set the @auditflags to 0 (if previously NULL), so that we can do bitwise AND
+	** correctly. At server installation, the audflags in sysdatabases is NULL.
+	*/
+	if (@auditflags is NULL)
+		select @auditflags = 0
+	/*
+	** Get the bit offset from spt_values table.
+	*/
+	if (@object_name in ("default table", "default view", "default procedure", "default trigger"))
+		select @spt_mask = number from master.dbo.spt_values
+			where name = @option and type = @spt_type+@spt_obj
+	else
+		select @spt_mask = number from master.dbo.spt_values
+			where name = @option and type = @spt_type+@spt_db
+
+	/*
+	** Assign the pass and failed masks. To avoid arithmetic overflow, 
+	** the highest option is hard coded.
+	*/
+	if (@spt_mask >= @max_s_audit)
+		select @pass_mask = @max_s_audit, @fail_mask = @max_f_audit
+	else
+		select @pass_mask = @spt_mask, @fail_mask = @spt_mask * 2
+
+	if (@setting is NULL)
+	begin
+
+        /*
+        ** Doing arithmetic (right) shifts with negative signed values
+        ** is implementation and platform dependent. To avoid this dependency,
+        ** checks are made separately for pass_mask and fail_mask to see
+        ** if passbit and/or failbit are set.
+        */
+        select @passbit = (@auditflags & @pass_mask)
+        select @failbit = (@auditflags & @fail_mask)
+
+        /* If setting is 'on' ... */
+        if ((@passbit = @pass_mask) and (@failbit = @fail_mask))
+            select @setting = "on"
+
+        /* If setting is 'off' ... */
+        if ((@passbit != @pass_mask) and (@failbit != @fail_mask))
+            select @setting = "off"
+
+        /* If setting is 'pass' ... */
+        if ((@passbit = @pass_mask) and (@failbit != @fail_mask))
+            select @setting = "pass"
+
+        /* If setting is 'fail' ... */
+        if ((@passbit != @pass_mask) and (@failbit = @fail_mask))
+            select @setting = "fail"
+
+		if (@object_name like "default %")
+		begin
+			/* 18232, "Default auditing '%1!' for '%2!' in database '%3!' is '%4!'" */
+			select @tmpstr = db_name()
+			exec sp_getmessage 18232, @msg output
+			print @msg, @option, @object_name, @tmpstr, @setting
+		end
+		else
+		begin
+			/* 18233, "Database specific auditing '%1!' in database '%2!' is '%3!'" */
+			exec sp_getmessage 18233, @msg output
+			print @msg, @option, @object_name, @setting
+		end
+		return (0)
+	end
+	/*
+	** If the setting is "off", then clear the audit option bits corresponding to the specified
+	** audit option by masking out the 2 bits (pass, fail) indicated by the mask and leaving
+	** the remaining bits unchanged. If the setting is not "off", then OR in the setting (pass,
+	** fail, on) into the audit option bits of the auditflags.
+	*/
+	if (@setting = 'off')
+		select @auditflags = ~(@pass_mask | @fail_mask) & @auditflags   
+	else if (@setting = 'on')
+		select @auditflags = @pass_mask | @fail_mask | @auditflags
+	else if (@setting = 'pass')
+		select @auditflags = @pass_mask | @auditflags
+	else if (@setting = 'fail')
+		select @auditflags = @fail_mask | @auditflags
+
+	/*
+	** Update the current setting for the specified audit option. If an update error
+	** occurred, then rollback the transaction. For each field accessed, save the option
+	** needed as an argument to the built-in audit_option().
+	*/
+	begin transaction
+	if (@object_name = "default table")
+	begin
+		update master.dbo.sysdatabases set deftabaud = @auditflags
+			where dbid = db_id()
+		select @optnum = @ao_def_tab
+	end
+	else if (@object_name = "default view")
+	begin
+		update master.dbo.sysdatabases set defvwaud = @auditflags
+			where dbid = db_id()
+		select @optnum = @ao_def_view
+	end
+	else if (@object_name in ("default procedure", "default trigger"))
+	begin
+		update master.dbo.sysdatabases set defpraud = @auditflags
+			where dbid = db_id()
+		select @optnum = @ao_def_sproc
+	end
+	else if (@option in ("encryption_key", "deny", "allow"))
+	begin
+		/*
+		** Additional database options stored in default table.
+		*/
+		update master.dbo.sysdatabases set deftabaud = @auditflags
+			where dbid = db_id(@object_name)
+		select @optnum = @ao_dbref2
+	end
+	else
+	begin
+		update master.dbo.sysdatabases set audflags = @auditflags
+			where dbid = db_id(@object_name)
+		select @optnum = @ao_dbref
+	end
+	if (@@rowcount != 1)
+	begin
+		/*
+		** 17981, "Error updating the audit flags in the system catalogs.  This
+		**	   is a system error.  Contact an SA-role user."
+		*/
+		rollback transaction
+		raiserror 17981
+		return (1)
+	end
+	/*
+	** Update audit option in server memory, save the return code.
+	*/
+	if (@object_name in ("default table", "default view", "default procedure", "default trigger"))
+		select @returncode = audit_option(@optnum, @auditflags, 0, 0, db_id())
+	else
+		select @returncode = audit_option(@optnum, @auditflags, 0, 0, db_id(@object_name))
+end
+/*
+** Process user specific audit options.
+*/
+else if (@updatecatalog = @syslogins)
+begin
+	/*
+	** Retrieve the current audit flag from the row corresponding to the user name
+	** in syslogins system catalog.
+	*/
+	select @auditflags = audflags from master.dbo.syslogins
+		where suid = suser_id(@login_name)
+	/*
+	** Set the @auditflags to 0 (if previously NULL), so that we can do bitwise AND
+	** correctly. At server installation, the audflags in syslogins is NULL.
+	*/
+	if (@auditflags is NULL)
+		select @auditflags = 0
+	/*
+	** Get the bit offset from spt_values table.
+	*/
+	select @spt_mask = number from master.dbo.spt_values
+		where name = @option and type = @spt_type+@spt_user
+
+	/*
+	** Assign the pass and failed masks. To avoid arithmetic overflow, 
+	** the highest option is hard coded.
+	*/
+	if (@spt_mask >= @max_s_audit)
+		select @pass_mask = @max_s_audit, @fail_mask = @max_f_audit
+	else
+		select @pass_mask = @spt_mask, @fail_mask = @spt_mask * 2
+
+	/*
+	** If we are displaying the current setting, then mask off all bits except the bits
+	** corresponding to the specified audit option, shift the audit option bits right by
+	** doing a division operation (SQL does not have right shift operation), then mask off
+	** all bits except the rightmost 2 bits to get the actual audit option bits. The resultant
+	** integer is used as an index into spt_values table to retrieve the setting string.
+	*/
+	if (@setting is NULL)
+	begin
+		select @setting = name from master.dbo.spt_values
+			where type = @spt_type+@spt_setting and number = ((@auditflags / @spt_mask) & 3)
+		/* 18234, "User specific auditing '%1!' for user '%2!' is '%3!'" */
+		exec sp_getmessage 18234, @msg output
+		print @msg, @option, @login_name, @setting
+		return (0)
+	end
+	/*
+	** If the setting is "off", then clear the audit option bits corresponding to the specified
+	** audit option by masking out the 2 bits (pass, fail) indicated by the mask and leaving
+	** the remaining bits unchanged. If the setting is not "off", then OR in the setting (pass,
+	** fail, on) into the audit option bits of the auditflags.
+	*/
+	if (@setting = 'off')
+		select @auditflags = ~(@pass_mask | @fail_mask) & @auditflags   
+	else if (@setting = 'on')
+		select @auditflags = @pass_mask | @fail_mask | @auditflags
+	else if (@setting = 'pass')
+		select @auditflags = @pass_mask | @auditflags
+	else if (@setting = 'fail')
+		select @auditflags = @fail_mask | @auditflags
+
+	/*
+	** Update the current setting for the specified audit option. If an update error
+	** occurred, then rollback the transaction.
+	*/
+	begin transaction
+	update master.dbo.syslogins set audflags = @auditflags
+		where suid = suser_id(@login_name)
+	if (@@rowcount != 1)
+	begin
+		/*
+		** 17981, "Error updating the audit flags in the system catalogs.  This
+		**	   is a system error.  Contact an SA-role user."
+		*/
+		rollback transaction
+		raiserror 17981
+		return (1)
+	end
+	/*
+	** Update audit option in server memory, save the return code.
+	*/
+	select @returncode = audit_option(@ao_lgopts, @auditflags, 0, suser_id(@login_name), 0)
+end
+/*
+** Process object specific audit options.
+*/
+else if (@updatecatalog = @sysobjects)
+begin
+	/*
+	** Retrieve the current audit flag from the row corresponding to the specified
+	** object in sysobjects system catalog.
+	*/
+	select @auditflags = audflags from sysobjects
+		where id = object_id(@object_name)
+	/*
+	** Set the @auditflags to 0 (if previously NULL), so that we can do bitwise AND
+	** correctly. At server installation, the audflags in syslogins is NULL.
+	*/
+	if (@auditflags is NULL)
+		select @auditflags = 0
+	/*
+	** Get the bit offset from spt_values table.
+	*/
+	select @spt_mask = number from master.dbo.spt_values
+		where name = @option and type = @spt_type+@spt_obj
+
+	/*
+	** Assign the pass and failed masks. To avoid arithmetic overflow, 
+	** the highest option is hard coded.
+	*/
+	if (@spt_mask >= @max_s_audit)
+		select @pass_mask = @max_s_audit, @fail_mask = @max_f_audit
+	else
+		select @pass_mask = @spt_mask, @fail_mask = @spt_mask * 2
+
+	/*
+	** If we are displaying the current setting, then mask off all bits except the bits
+	** corresponding to the specified audit option, shift the audit option bits right by
+	** doing a division operation (SQL does not have right shift operation), then mask off
+	** all bits except the rightmost 2 bits to get the actual audit option bits. The resultant
+	** integer is used as an index into spt_values table to retrieve the setting string.
+	*/
+	if (@setting is NULL)
+	begin
+		select @setting = name from master.dbo.spt_values
+			where type = @spt_type+@spt_setting and number = ((@auditflags / @spt_mask) & 3)
+		/* 18235, "Object specific auditing '%1!' for object '%2!' is '%3!'" */
+		exec sp_getmessage 18235, @msg output
+		print @msg, @option, @object_name, @setting
+		return (0)
+	end
+	/*
+	** If the setting is "off", then clear the audit option bits corresponding to the specified
+	** audit option by masking out the 2 bits (pass, fail) indicated by the mask and leaving
+	** the remaining bits unchanged. If the setting is not "off", then OR in the setting (pass,
+	** fail, on) into the audit option bits of the auditflags.
+	*/
+	if (@setting = 'off')
+		select @auditflags = ~(@pass_mask | @fail_mask) & @auditflags   
+	else if (@setting = 'on')
+		select @auditflags = @pass_mask | @fail_mask | @auditflags
+	else if (@setting = 'pass')
+		select @auditflags = @pass_mask | @auditflags
+	else if (@setting = 'fail')
+		select @auditflags = @fail_mask | @auditflags
+
+	/*
+	** Update the current setting for the specified audit option. If an update error
+	** occurred, then rollback the transaction.
+	*/
+	begin transaction
+	update sysobjects set audflags = @auditflags
+		where id = object_id(@object_name)
+	if (@@rowcount != 1)
+	begin
+		/*
+		** 17981, "Error updating the audit flags in the system catalogs.  This
+		**	   is a system error.  Contact an SA-role user."
+		*/
+		rollback transaction
+		raiserror 17981
+		return (1)
+	end
+	/*
+	** Update audit option in server memory, save the return code.
+	*/
+	select @returncode = audit_option(@ao_object, @auditflags, 0, object_id(@object_name), db_id())
+end
+
+/*
+** Check the return code from call to built-in audit_option(). If successful, then
+** commit the transaction, else rollback the transaction.
+*/
+if (@returncode = 1) or (@returncode = 0)
+begin
+	commit transaction
+	if ((@option = "config_history") and (@setting = "on"))
+	begin
+		/*
+		** We do the following things when enabling auditing:
+		**	1. Copy master.dbo.sysconfigures to ch_syscfg;
+		**	2. Insert shutdown flag if it not exists;
+		**	3. Update shutdown flag to 1(running);
+		*/
+		exec ("truncate table sybsecurity.dbo.ch_syscfg")
+		exec ("insert into sybsecurity.dbo.ch_syscfg
+			select * from master.dbo.sysconfigures")
+
+
+		exec ("if not exists (
+			select * from sybsecurity.dbo.ch_runstatus)
+				insert sybsecurity.dbo.ch_runstatus
+					values (NULL, 0)")
+		exec ("update sybsecurity.dbo.ch_runstatus
+			set runstatus = 1")
+
+	end
+	if ((@option = "config_history") and (@setting = "off"))
+	begin
+		exec ("update sybsecurity.dbo.ch_runstatus
+			set runstatus = 0")
+	end
+end
+else
+	rollback transaction
+/*
+** For returncode = 1, inform user that audit option has taken effect immediately.
+*/
+if (@returncode = 1)
+begin
+	/*
+	** 17982 "Audit option has been changed and has taken effect immediately."
+	*/
+        exec sp_getmessage 17982, @msg output
+	print @msg
+        return (0)
+end
+/*
+** For return code - 0, inform user that audit option will take effect after reboot.
+*/
+else if (@returncode = 0)
+begin
+	/*
+	** 17983 "Audit option has been changed and will take effect after a reboot."
+	*/
+        exec sp_getmessage 17983, @msg output
+	print @msg
+        return (0)
+end
+/*
+** Error with updating audit options in server memory.
+*/
+else
+begin
+	/* 18236, "Error updating the audit flags. This is a system error. */
+	/*         Contact an SA-role user." */
+	raiserror 18236
+	return (1)
+end
+go
+exec sp_procxmode 'sp_audit', 'anymode'
+go
+grant execute on sp_audit to public
+go
+dump transaction master with truncate_only
+go
+dump transaction sybsystemprocs with truncate_only
+go
+print "Installing sp_aux_getsptaud"
+go
+
+
+/*
+** Auxilliary stored procedure for getting an audit setting 
+**
+** Input Parameters:
+**	input_id 		dbid | suid | objid, depending on flag_type
+**	flag_type 		which audit flag and spt type to examine
+**	cmdstr 			name of audited command name 
+**	setting - return	audit option setting string from spt_values 
+** 
+** Output parameters:
+**	none
+** Returns:
+**	0		everything went ok
+**	1		general error
+*/
+
+create or replace procedure sp_aux_getsptaud
+@input_id int = NULL,		/* dbid | suid | objid */
+@flag_type varchar(10),		/* which audit flag to get */ 
+@cmdstr varchar(90),		/* command name */
+@setting_str varchar(30) output	/* audit option setting string */
+as
+
+declare @setting_num int	/* for calculating numeric value of setting */
+declare @succ_mask int		/* bit offset for success audit option */
+declare @fail_mask int		/* bit offset for failure audit option */
+declare @succ int		
+declare @fail int		
+declare @auditflags int
+declare @spt_type varchar(2)	/* type of command; for a safety check */
+declare @spt_setting varchar(2)	
+declare @spt_obj varchar(2)	
+declare @spt_db varchar(2)	
+declare @spt_user varchar(2)	
+declare @max_s_audit int                /* max pass auditable option */
+declare @max_f_audit int                /* max fail auditable option */
+declare @nullarg 	char(1)
+declare @dummy 		int
+declare @status		int
+declare @gp_enabled	int
+
+
+
+select @succ = 0
+select @fail = 0
+select @spt_setting = "Zs"
+select @spt_obj = "Zo"
+select @spt_db = "Zd"
+select @spt_user = "Zu"
+select @max_s_audit=hextoint("0x40000000")
+select @max_f_audit=hextoint("0x80000000")
+
+/* 
+** If granular permissions is not enabled then sso_role is required.
+** If granular permissions is enabled then the permission 'manage auditing' is
+** required.  proc_role and proc_auditperm will also do auditing
+** if required. Both will also print error message if required.
+*/
+
+select @nullarg = NULL
+execute @status = sp_aux_checkroleperm "sso_role", "manage auditing",
+                                                @nullarg, @gp_enabled output
+
+/* For Auditing */
+if (@gp_enabled = 0)
+begin
+	if (proc_role("sso_role") = 0)
+	begin
+		return (1)
+	end
+end
+else
+begin
+	select @dummy = proc_auditperm("manage auditing", @status)
+end
+
+if (@status != 0)
+	return (1)
+
+/*
+** get audit flags 
+*/
+
+if (@flag_type = "defpraud")
+begin
+	select @auditflags = defpraud from master.dbo.sysdatabases 
+		where dbid = @input_id
+	select @spt_type = @spt_obj
+end
+else if (@flag_type = "audflags")
+begin
+	select @auditflags = audflags from sysobjects 
+		where id =  @input_id
+	select @spt_type = @spt_obj
+end
+else if (@flag_type = "laudflags")
+begin
+	select @auditflags = audflags from master.dbo.syslogins 
+		where suid =  @input_id
+		and ((status & 512) != 512) /* not LOGIN PROFILE */
+	select @spt_type = @spt_user
+end
+else if (@flag_type = "deftabaud")
+begin
+	select @auditflags = deftabaud from master.dbo.sysdatabases 
+		where dbid = @input_id
+	select @spt_type = @spt_obj
+end
+else if (@flag_type = "defvwaud")
+begin
+	select @auditflags = defvwaud from master.dbo.sysdatabases 
+		where dbid = @input_id
+	select @spt_type = @spt_obj
+end
+else if (@flag_type = "daudflags")
+begin
+	select @auditflags = audflags from master.dbo.sysdatabases 
+		where dbid = @input_id
+	select @spt_type = @spt_db
+end
+else if (@flag_type = "daudflags2")
+begin
+	select @auditflags = deftabaud from master.dbo.sysdatabases 
+		where dbid = @input_id
+	select @spt_type = @spt_db
+end
+
+
+else 
+begin
+	/* 
+	** 18557,  "The parameter '%1!' is invalid. Enter a valid parameter, 
+	** and run sp_aux_getsptaud again."
+	*/ 
+	raiserror 18557, @flag_type
+	return (1)
+end
+
+/* 
+** get the success bit number for the command the user requested
+*/
+select @succ_mask = number from master.dbo.spt_values
+	where name = @cmdstr and type = @spt_type
+
+if @succ_mask is null 
+begin
+	/* 
+	** 18557,  "The parameter '%1!' is invalid. Enter a valid parameter, 
+	** and run sp_aux_getsptaud again."
+	*/ 
+	raiserror 18557, @cmdstr
+	return (1)
+end
+/*
+** get failure bit, the next one to the left 
+*/
+
+if (@succ_mask < @max_s_audit)
+	select @fail_mask = (2 * @succ_mask)
+else
+	select @fail_mask = @max_f_audit
+
+/*
+** find out if success or failure are being audited
+*/
+
+if ((@succ_mask & @auditflags) != 0)
+	select @succ = 1
+if ((@fail_mask & @auditflags) != 0)
+	select @fail = 2
+
+/*
+** combine succ and fail: range = 0..3
+*/
+
+select @setting_num = @succ + @fail
+
+/*
+** return the string value for the setting from spt_values
+*/
+
+select @setting_str = name from master.dbo.spt_values
+	where number = @setting_num and type = @spt_setting
+
+return (0)
+go
+dump transaction master with truncate_only
+go
+dump transaction sybsystemprocs with truncate_only
+go
+print "Installing sp_aux_displayrolaud"
+go
+
+
+/*
+** Auxiliary stored procedure to display role auditing options 
+**
+** If the rolename parameter is NULL, the settings for all roles are 
+** displayed
+**
+** Input Parameters:
+**	rolename		role name (NULL if none specified)
+** 
+** Output parameters:
+**	none
+** Returns:
+**	0		everything went ok
+**	1		general error
+*/ 
+create or replace procedure sp_aux_displayrolaud
+@rolename  varchar(30)  = NULL		/* role name  */
+
+as
+
+declare @suid int
+declare @msg varchar(1024)
+declare @setting varchar(30)    /* audit option setting */
+declare @nullarg 	char(1)
+declare @status		int
+declare @gp_enabled	int
+declare @dummy 		int
+
+/* 
+** check if user has sso role, proc_role will also do auditing
+** if required. proc_role will also print error message if required.
+*/
+
+/* 
+** If granular permissions is not enabled then sso_role is required.
+** If granular permissions is enabled then the permission 'manage auditing' is
+** required.  proc_role and proc_auditperm will also do auditing
+** if required. Both will also print error message if required.
+*/
+
+select @nullarg = NULL
+execute @status = sp_aux_checkroleperm "sso_role", "manage auditing",
+                                                @nullarg, @gp_enabled output
+
+/* For Auditing */
+if (@gp_enabled = 0)
+begin
+	if (proc_role("sso_role") = 0)
+		return (1)
+end
+else
+begin
+	select @dummy = proc_auditperm("manage auditing", @status)
+end
+
+if (@status != 0)
+	return (1)
+
+/* Don't display rowcount. */
+set nocount on
+
+/* Convert the args to lower case with no leading/trailing blanks. */
+if @rolename is not NULL
+	select @rolename = lower(ltrim(rtrim(@rolename)))
+
+/*
+** If no role name provided, we'll get the auditing options for all
+** roles currently in sybsecurity.dbo.sysauditoptions that have  
+** auditing options enabled.
+*/
+if @rolename is NULL 
+begin
+	/*
+	** First make sure there's at least one role with auditing
+	** enabled.  If not, just print a message and return.
+	*/
+	if (select count(name) from sybsecurity.dbo.sysauditoptions
+	    where status = 2) = 0
+	begin 
+		/* "No roles currently have auditing enabled." */
+		exec sp_getmessage 17381, @msg output
+		print @msg
+		return (0)
+	end
+
+	select "Role Name" = role_name(id), "Audit Option" = name,
+	       "Value" = sval from sybsecurity.dbo.sysauditoptions
+	       where status = 2 order by name
+	return (0)
+end
+else
+begin
+	if (role_id(@rolename) is NULL)
+	begin
+		/* 17977, "'%1!' does not exist." */
+		raiserror 17977, @rolename
+		return (1)
+	end
+	else
+	begin
+		select "Role Name" = @rolename, "Audit Option" = name,
+		        "Value" = sval from sybsecurity.dbo.sysauditoptions
+		        where status = 2 and id = role_id(@rolename) order by name
+	end
+end
+return (0)
+go
+dump transaction master with truncate_only
+go
+dump transaction sybsystemprocs with truncate_only
+go
+print "Installing sp_aux_displaylogaud"
+go
+
+
+/*
+** Auxilliary stored procedure to display login auditing options 
+**
+** If the loginame parameter is NULL, the settings for all logins are 
+** displayed
+**
+** Input Parameters:
+**	loginame		login name name (NULL if none specified)
+** 
+** Output parameters:
+**	none
+** Returns:
+**	0		everything went ok
+**	1		general error
+*/
+
+create or replace procedure sp_aux_displaylogaud
+@loginame varchar(30) = NULL	/* login name of the login */
+as
+
+declare @all_logins int		/* flag for all logins */
+declare @suid int		
+declare @msg varchar(1024)
+declare @optstr varchar(90)
+declare @setting varchar(30)    /* audit option setting */
+declare @flag_type varchar(10) 
+declare @spt_user varchar(2)	
+declare @nullarg 	char(1)
+declare @dummy 		int
+declare @status		int
+declare @gp_enabled	int
+
+select @spt_user = "Zu"
+select @all_logins = 0
+
+/* 
+** check if user has sso role, proc_role will also do auditing
+** if required. proc_role will also print error message if required.
+*/
+
+/* 
+** If granular permissions is not enabled then sso_role is required.
+** If granular permissions is enabled then the permission 'manage auditing' is
+** required.  proc_role and proc_auditperm will also do auditing
+** if required. Both will also print error message if required.
+*/
+
+select @nullarg = NULL
+execute @status = sp_aux_checkroleperm "sso_role", "manage auditing",
+                                                @nullarg, @gp_enabled output
+
+/* For Auditing */
+if (@gp_enabled = 0)
+begin
+	if (proc_role("sso_role") = 0)
+		return (1)
+end
+else
+begin
+	select @dummy = proc_auditperm("manage auditing", @status)
+end
+
+if (@status != 0)
+	return (1)
+
+/*  Don't display rowcount.  */
+set nocount on
+
+/*
+** If no login name provided, we'll get the auditing options for all
+** logins currently in master.dbo.syslogins that have auditing enabled.
+** So, we'll have to set up a loop and step through syslogins 1 row at
+** a time in alphabetical order by name.  Start by getting the lowest
+** alphabetical name.
+*/
+if @loginame is NULL
+begin
+	/*
+	** First make sure there's at least one login with auditing
+	** enabled.  If not, just print a message and return.
+	*/
+	if (select count(name) from master.dbo.syslogins
+	    where audflags != 0) = 0
+	begin
+		/* 17991, "No logins currently have auditing enabled." */
+		exec sp_getmessage 17991, @msg output
+		print @msg
+		return (0)
+	end
+
+	select @all_logins = 1
+        declare ln_cursor cursor for select name from master.dbo.syslogins
+                where audflags != 0
+        open ln_cursor
+        fetch ln_cursor into @loginame	
+end
+else
+if (suser_id(@loginame) is NULL)
+begin
+	/* 17977, "'%1!' does not exist." */
+	raiserror 17977, @loginame
+	return (1)
+end
+
+/*
+** create temp table for output
+*/
+ 
+create table #output (lname varchar(31), OPname varchar(14), setting varchar(4))
+
+/*
+** select which audit flag to look at 
+*/
+
+select @flag_type = "laudflags"
+
+/*
+** set up cursor for looking at all user options
+*/
+declare opt_cursor cursor for select name from master.dbo.spt_values
+        where type = @spt_user
+
+/*
+** Begin the loop.  Break if a login name was provided, or we've run
+** out of logins with auditing enabled.
+*/
+while (1=1)
+begin
+	select @suid = suser_id(@loginame)
+	/*
+	** set up option cursor
+	*/
+	open opt_cursor
+	fetch opt_cursor into @optstr
+	
+	/*
+	** get setting for each audit option 
+	*/
+	while (@@sqlstatus != 2)
+	begin
+		exec sp_aux_getsptaud @suid, @flag_type, @optstr,
+		         @setting output
+		if @setting != "off"
+			insert #output values (@loginame, @optstr, @setting) 
+		fetch opt_cursor into @optstr
+	end
+	close opt_cursor
+	
+	/*
+	** get next login name
+	*/
+	if @all_logins = 1
+	begin
+		fetch ln_cursor into @loginame
+		if @@sqlstatus = 2
+			break
+	end
+	else /* @all_logins = 0 */
+		break
+end
+
+/*
+** print output table
+*/
+
+select "Login Name" = lname, "Audit Option" = OPname,
+	"Value" = setting
+	from #output
+	order by lname
+
+return (0)
+go
+dump transaction master with truncate_only
+go
+dump transaction sybsystemprocs with truncate_only
+go
+print "Installing sp_aux_displayobjaud"
+go
+
+
+/*
+** Auxilliary stored procedure for displaying object audit settings. 
+** This is a multipurpose procedure.  If arg1 is "default" this proc is
+** used to report on the default table/view settings in all DBs or in a
+** specific DB designated by name.  If arg1 is not "default", this proc
+** is used to report on audit settings for all tables/views in the
+** current database if name is empty or of a specific sproc/trigger if
+** name is not empty.
+**
+** Input Parameters:
+**	arg1 		table or view name, or "default" 
+**	name 		dbname - ignored if arg1 is not "default" 
+** 
+** Output parameters:
+**	none
+** Returns:
+**	0		everything went ok
+**	1		general error
+*/
+
+create or replace procedure sp_aux_displayobjaud
+@arg1 varchar(1023) = NULL,	/* <table/view name> | default */
+@name varchar(255) = NULL	/* <dbname> ignored if arg1 is not "default" */
+
+as
+declare @objname varchar(1023)		/* target object */
+declare @dbname varchar(255)		/* dbname for default auditing */
+declare @dbid int
+declare @objid int		/* object id of table or view    */
+declare @i int
+declare @type char		/* 'S'=systable; 'U'=user table; 'V'=view  */
+declare @owner varchar(30)	/* object owner's name */
+declare @default_table_view int	/* 0=no default; 1=default table/view */
+declare @all int		/* flag for displaying all db's or obj's */
+declare @tmpstr varchar(1023)	/* for various string usage */
+declare @msg varchar(1024)
+declare @optstr varchar(90)
+declare @setting varchar(30)    /* audit option setting */
+declare @defvwstr varchar(30)
+declare @deftabstr varchar(30)
+declare @flag_type varchar(10) 
+declare @userdbname varchar(30)
+declare @spt_obj varchar(2) 	
+
+declare	@q_dbname varchar(30)	/* user's db-qualification of object name */  
+declare @site  varchar(30) 
+declare @tabname varchar(255) 
+declare @retcode int
+declare @nullarg 	char(1)
+declare @dummy 		int
+declare @status		int
+declare @gp_enabled	int
+
+/*
+** Initialize values 
+*/
+select @spt_obj = "Zo"
+select @deftabstr = "DEFAULT TABLE"
+select @defvwstr = "DEFAULT VIEW"
+
+/* 
+** If granular permissions is not enabled then sso_role is required.
+** If granular permissions is enabled then the permission 'manage auditing' is
+** required.  proc_role and proc_auditperm will also do auditing
+** if required. Both will also print error message if required.
+*/
+
+select @nullarg = NULL
+execute @status = sp_aux_checkroleperm "sso_role", "manage auditing",
+                                                @nullarg, @gp_enabled output
+
+/* For Auditing */
+if (@gp_enabled = 0)
+begin
+	if (proc_role("sso_role") = 0)
+		return (1)
+end
+else
+begin
+	select @dummy = proc_auditperm("manage auditing", @status)
+end
+
+if (@status != 0)
+	return (1)
+
+/* Don't display rowcount. */
+set nocount on
+
+/* Set up the local variables based on what we find in the arglist. */
+
+select @tmpstr = lower(ltrim(rtrim(@arg1)))
+select @dbname = @name
+if @tmpstr = "default"
+begin
+	select @default_table_view = 1
+	select @tmpstr = "default table/view"
+end
+else /* @tmpstr is not "default" */
+begin
+	select @default_table_view = 0
+	/*
+	** Load the @objname variable and load the @owner variable
+	*/
+	select @objname = @arg1
+	select @owner = NULL
+	if @objname is not NULL
+	begin
+		exec @retcode = sp_namecrack @objname, @site output, 
+					     @q_dbname output, @owner output, 
+					     @tabname output
+		/*
+		** if you qualified the name, it needs to be this db.
+		*/
+		if ((@q_dbname is not null) and (@q_dbname != db_name()) or
+			(@site is not null) and (@site != @@servername))
+		begin
+			/* 18227, "'%1!' is not in the current database" */
+			raiserror 18227, @objname
+			return (1)
+		end
+
+		select @objid = object_id(@objname)
+ 
+		/*
+		** an object of this type must exist 
+		*/
+		if (@objid is NULL) or
+		   ((select count(*) from sysobjects 
+			where (id = @objid and 
+			type in ('U', 'V', 'S'))) = 0)
+		begin
+			/* 17461, "Object does not exist in this database."  */
+			raiserror 17461
+			return (1)
+		end
+ 
+		/*
+		** Construct objname so the output is uniform. 
+		** For input of form (owner.name), this is redundant, but it
+		** covers all of the other combinations.
+		*/
+		if (@owner is NULL)
+		begin
+			select @owner = user_name(uid) from sysobjects
+				where id = @objid 
+		end
+		select @objname = @owner + '.' + @tabname
+
+	end /* if @objname is not NULL */
+end /* else @tmpstr is not like "default%" */
+
+/*
+** create temp table for output
+** Note that we use this table for outputting defaults as well as the
+** non-default option settings; if defaults, then oname is "DEFAULT"
+*/
+/* oname could be site.db.owner.objname, the max length is 30*3+255 +3 */ 
+create table #output (oname varchar(348), OPname varchar(14), 
+		setting varchar(4), db varchar(30))
+
+/*
+** The rest of this proc will be divided into the two cases of whether this
+** is "default <object>" processing or regular object processing.  Basically,
+** the main difference is that default processing will operate on master.dbo.
+** sysdatabases, while regular object processing will operate on curdb.dbo.
+** sysobjects.  We'll start with the default object processing case.
+**
+**	{ "default table" | "default view" }, <dbname>,
+*/
+if @default_table_view =1
+begin
+	/*
+	** If no arg provided after the "default <object>", display the names
+	** and default auditing options of all databases that have an "active"
+	** default setting.
+	**
+	** If the @dbname was provided, display the default auditing status
+	** for that database (whether it's "active" or not)
+	*/
+	select @all = 0
+
+	if @dbname is NULL
+	begin
+		/*
+		** First make sure there's at least one database with
+		** an active default. If not, just print a message and
+		** return.
+		*/
+		if ((select count(name) from master.dbo.sysdatabases
+		     where ((deftabaud != 0) or (defvwaud > 0))) = 0)
+		begin
+			/*
+			** 17998, "No databases currently have %1!
+			**	   auditing enabled.
+			*/
+			exec sp_getmessage 17998, @msg output
+			print @msg, @tmpstr
+			return (0)
+		end
+		select @all = 1
+	        /*
+	        ** set up the cursor to look through sysdatabases
+	        */
+	        declare db_cursor cursor for select name 
+			from master.dbo.sysdatabases
+			where ((deftabaud != 0) or (defvwaud > 0))
+	        open db_cursor
+	        fetch db_cursor into @dbname
+	end
+	else
+	if (db_id(@dbname) is NULL)
+	begin
+		/* 17977, "'%1!' does not exist." */
+		raiserror 17977, @dbname
+		return (1)
+	end
+
+	/*
+	** set up cursor for looking at all object options
+	*/
+	declare opt_cursor cursor for select name from master.dbo.spt_values
+        	where (type = @spt_obj and name != "func_obj_access"
+		       and name not like "%exec%")
+
+	/*
+	** Begin the loop.  Break if a dbname name was provided, or
+	** we've run out of databases with active defaults.
+	*/
+	while (1 = 1)
+	begin
+		select @dbid = db_id(@dbname) 
+
+	        /*
+	        ** set up option cursor
+	        */
+	        open opt_cursor
+	        fetch opt_cursor into @optstr
+	 
+	        /*
+	        ** get setting for each audit option
+	        */
+	        while (@@sqlstatus != 2)
+	        begin
+	        	/*
+	        	** first get table defaults
+	        	*/
+			select @flag_type = "deftabaud"
+	                exec sp_aux_getsptaud @dbid, @flag_type, @optstr,
+	                        @setting output
+	                if @setting != "off"
+				insert #output values (@deftabstr, @optstr, 
+						       @setting, @dbname)
+	        	/*
+	        	** then get view defaults
+	        	*/
+			select @flag_type = "defvwaud"
+	                exec sp_aux_getsptaud @dbid, @flag_type, @optstr,
+	                        @setting output
+	                if @setting != "off"
+				insert #output values (@defvwstr, @optstr, 
+						       @setting, @dbname)
+	
+	                fetch opt_cursor into @optstr
+	        end
+	        close opt_cursor
+
+	        /*
+	        ** get next dbname
+	        */
+	        if @all = 1
+	        begin
+	                fetch db_cursor into @dbname
+	                if @@sqlstatus = 2
+	                        break
+	        end
+	        else /* @all = 0 */
+	                break
+
+	end	/* while (1 = 1) */
+end	/* if @default_table_view = 1 */
+else
+/*
+** For regular, non-default object auditing...
+** Check for and process 'table' and 'view' auditing
+** <tablename | viewname>
+*/
+begin
+	select @all = 0
+
+	select @flag_type = "audflags"
+
+	/*
+	** If no @objname provided, we'll get the auditing options for
+	** all tables and views currently in curdb.dbo.sysobjects that
+	** have some auditing enabled on them.  So, we'll have to set
+	** up a loop and step through sysobjects 1 row at a time 
+	**
+	** If @objname was provided, display its current auditing
+	** status.
+	*/
+	if @objname is NULL
+	begin
+		/*
+		** If there aren't any tables/views that have auditing
+		** enabled, just print a message and return.
+		*/
+		if (select count(name) from sysobjects
+		    where type in ('S','U','V') and audflags != 0) = 0
+		begin
+			/*
+			** 18000, "No objects currently have auditing
+			**	   enabled.
+			*/
+			exec sp_getmessage 18000, @msg output
+			print @msg
+			return (0)
+		end
+
+        	/*
+        	** set up the cursor to look through sysobjects
+        	*/
+        	declare obj_cursor cursor for select id from sysobjects
+                	where audflags != 0 and type in ('S', 'U', 'V')
+        	open obj_cursor
+        	fetch obj_cursor into @objid
+
+		select @objname = user_name(uid) + '.' + name from
+			sysobjects where id = @objid
+		select @all = 1
+	end
+	/*
+	** get the name of the current database for the output
+	*/
+	select @userdbname = db_name()
+
+	/*
+	** set up cursor for looking at all options
+	*/
+	declare opt_cursor cursor for select name from master.dbo.spt_values
+        	where (type = @spt_obj and name not like "%exec%")
+
+	/*
+	** Begin the loop.  Break if an objname was provided, or we've
+	** run out of objects with auditing enabled.
+	*/
+	while (1 = 1)
+	begin
+	        /*
+	        ** get first option from cursor
+	        */
+	        open opt_cursor
+	        fetch opt_cursor into @optstr
+	 
+	        /*
+	        ** get setting for each audit option
+	        */
+	        while (@@sqlstatus != 2)
+	        begin
+	                exec sp_aux_getsptaud @objid, @flag_type, @optstr,
+	                        @setting output
+	                if @setting != "off"
+	                        insert #output values (@objname, @optstr, 
+						       @setting, @userdbname)
+	                fetch opt_cursor into @optstr
+	        end
+	        close opt_cursor
+	
+	        /*
+	        ** get next object id
+	        */
+	        if @all = 1
+	        begin
+	                fetch obj_cursor into @objid
+	                if @@sqlstatus = 2
+	                        break
+
+			select @objname = user_name(uid) + '.' + name from
+				sysobjects where id = @objid
+	        end
+	        else /* @all = 0 */
+	                break
+
+	end	/* while (1 = 1) */
+end
+
+if (select count(*) from #output) = 0
+begin
+	/*
+	** 17998, "No databases currently have %1!
+	**	   auditing enabled.
+	*/
+	exec sp_getmessage 17998, @msg output
+	print @msg, @tmpstr
+	return (0)
+end
+/*
+** print output table
+*/
+ 
+exec sp_autoformat @fulltabname = #output,
+	@selectlist = "'Table/View' = oname, 'Audit Option' = OPname, 'Value' = setting, 'Database' = db",
+	@orderby = "order by oname"
+ 
+/* We're done reporting, so good bye. */
+return (0)
+
+go
+dump transaction master with truncate_only
+go
+dump transaction sybsystemprocs with truncate_only
+go
+print "Installing sp_aux_displayoptaud"
+go
+
+/*
+** Auxilliary stored procedure for displaying global audit settings
+**
+** If the opkeywd parameter is NULL, the settings for all global options are
+** displayed
+**
+** Input Parameters:
+**	opkeywd		option name (NULL if none specified)
+** 
+** Output parameters:
+**	none
+** Returns:
+**	0		everything went ok
+**	1		general error
+*/
+
+create or replace procedure sp_aux_displayoptaud
+@opkeywd  varchar(30)  = NULL		/* audit option name  */
+
+as
+declare @optcnt		int		/* number of matching options */
+declare @exact		int		/* Exact match? */
+declare @msg		varchar(1024)	/* for sp_getmessage */
+declare @nullarg 	char(1)
+declare @dummy 		int
+declare @status		int
+declare @gp_enabled	int
+declare @loginame	varchar(30)		/* login name of the login */
+declare @suid		int
+declare @setting	varchar(30)		/* audit option setting */
+declare @discnt		int		/* number of matching distinct option names */
+
+/* Initialize */
+select @exact = 0
+select @optcnt = 0 
+select @discnt = 0
+
+/* 
+** If granular permissions is not enabled then sso_role is required.
+** If granular permissions is enabled then the permission 'manage auditing' is
+** required.  proc_role and proc_auditperm will also do auditing
+** if required. Both will also print error message if required.
+*/
+
+select @nullarg = NULL
+execute @status = sp_aux_checkroleperm "sso_role", "manage auditing",
+                                                @nullarg, @gp_enabled output
+
+/* For Auditing */
+if (@gp_enabled = 0)
+begin
+	if (proc_role("sso_role") = 0)
+		return (1)
+end
+else
+begin
+	select @dummy = proc_auditperm("manage auditing", @status)
+end
+
+if (@status != 0)
+	return (1)
+
+/* Don't display rowcount. */
+set nocount on
+
+/* Convert the args to lower case with no leading/trailing blanks. */
+if @opkeywd is not NULL
+	select @opkeywd = lower(ltrim(rtrim(@opkeywd)))
+
+/*
+** If no arguments, then display all the current settings.
+*/
+if @opkeywd is NULL 
+begin
+	/*
+	** Exclude sso_role, sa_role ect. rows in sybsecurity..sysauditoptions
+	** from output table, since they are useless 
+	** for version higher than 16.0SP03
+	*/
+	
+	select "Audit Option" = name, "Value" = sval,
+	"Subject Name" = 
+	case
+	    when id = NULL then "All"
+	    when id != NULL and status = 0 then suser_name(id) 
+	    when id != NULL and status = 2 then role_name(id) 
+	end
+	,  "Type of Subject" = 
+	case 
+	    when id = NULL then "All logins and roles"
+	    when id != NULL and status = 0 then "login"
+	    when id != NULL and status = 2 then "role"
+	end
+	from sybsecurity.dbo.sysauditoptions where num not in
+	(22,23,24,25,26,27,32,33,37,38,39,40,41,42,43,56,57) and 
+	sval != 'off' order by name
+	return (0)
+end
+
+/*  Check if it is a valid unique name...  */
+set nocount on  /* Do not display number of rows affected */
+
+/* First look for exact match. */
+select @optcnt = count(*) from sybsecurity.dbo.sysauditoptions
+	where name =  @opkeywd 
+
+if @optcnt > 0
+	/* Found some exact matches */
+	select @exact = @optcnt
+	
+/* If not exact match then look for like. */
+if @optcnt = 0
+begin
+	select @optcnt = count(*) from sybsecurity.dbo.sysauditoptions
+		where name like "%" + @opkeywd + "%"
+end
+
+/* Create temp table for output*/
+create table #output (AOname varchar(30), setting char(4), Sname varchar(30), Tname varchar(30))
+
+/*  If the name is not valid, then display all options.  */
+if @optcnt = 0
+begin
+	/* 18003, "Audit option '%1!' does not exist. Valid options are:" */
+	raiserror 18003, @opkeywd
+	select name from sybsecurity.dbo.sysauditoptions where num not in
+	(22,23,24,25,26,27,32,33,37,38,39,40,41,42,43,56,57) 
+	return (1)
+end
+else if @optcnt = @exact /* found some exactly match items. */
+begin
+		/* Display all rows for specified option in global audit options, maybe not only one. */
+		select AOname = name, setting = sval,
+		Sname = 
+		case
+		    when id = NULL then "All"
+		    when id != NULL and status = 0 then suser_name(id) 
+		    when id != NULL and status = 2 then role_name(id)
+		end
+		, Tname = 
+		case 
+		    when id = NULL then "All logins and roles"
+		    when id != NULL and status = 0 then "login"
+		    when id != NULL and status = 2 then "role"
+		end
+		into #out1
+		from sybsecurity.dbo.sysauditoptions where name = @opkeywd and sval != 'off'
+		insert #output select * from #out1
+end 
+else /* @optcnt >0 and @exact = 0, no exact match found, but some 'like' matches. */
+begin
+	select @discnt = count(distinct name) from sybsecurity.dbo.sysauditoptions
+	                 where name like "%" + @opkeywd + "%" and num != 25
+	if @discnt = 1
+	begin
+		/*  a partial name is given, display only it's setting. */
+		select AOname = name, setting = sval,
+		Sname = 
+		case
+		    when id = NULL then "All"
+		    when id != NULL and status = 0 then suser_name(id) 
+		    when id != NULL and status = 2 then role_name(id)
+		end
+		, Tname = 
+		case 
+		    when id = NULL then "All logins and roles"
+		    when id != NULL and status = 0 then "login"
+		    when id != NULL and status = 2 then "role"
+		end
+		into #out3
+		from sybsecurity.dbo.sysauditoptions  where name like "%" + @opkeywd + "%" and sval != 'off'
+		insert #output select * from #out3
+	end
+	else /* option string is ambiguous, display the ambiguous ones. */
+	 begin
+		/* 18004, "Audit option %1! is ambiguous.  Ambiguous options are:" */
+		raiserror 18004, @opkeywd
+		select distinct name from sybsecurity.dbo.sysauditoptions
+		           where name like "%" + @opkeywd + "%" and num != 25
+		return (1)
+	end
+end
+
+/* print output table */
+select "Audit Option" = AOname, "Value" = setting, "Subject Name" = Sname,
+	"Type of Subject" = Tname from #output 
+	order by AOname
+
+return (0)
+go
+dump transaction master with truncate_only
+go
+dump transaction sybsystemprocs with truncate_only
+go
+print "Installing sp_aux_displaysprocaud"
+go
+
+/*
+** Auxilliary stored procedure for displaying stored procedure audit settings.
+** This is a multipurpose procedure.  If arg1 is "default*" this proc is
+** used to report on the default sproc/trigger settings in all DBs or in a
+** specific DB designated by name.  If arg1 is not "default*", this proc
+** is used to report on audit settings for all sproc/triggers in the
+** current database if name is empty or of a specific sproc/trigger if
+** name is not empty.
+**
+** If the database parameter is NULL, the settings for all databases are 
+** displayed
+**
+** Input Parameters:
+**	arg1 		table or view name, or "default" 
+**	name 		dbname - ignored if arg1 is not "default" 
+** 
+** Output parameters:
+**	none
+** Returns:
+**	0		everything went ok
+**	1		general error
+*/
+
+
+create or replace procedure sp_aux_displaysprocaud
+@arg1 varchar(1023) = NULL,	/* <sproc/trigger name> | default */
+@name varchar(255) = NULL	/* <dbname> ignored if arg1 is not "default" */
+
+as
+declare @default int		/* "default" flag */
+declare @dbname varchar(255)
+declare @userdbname varchar(30)
+declare @owner varchar(30)
+declare @procname varchar(1023)
+declare @objid int
+declare @dbid int
+declare @all int		/* indicates that dbname/sproc_name was not 
+				** given, so we are reporting on all db's
+				** or sproc/triggers
+				*/
+declare @i int
+declare @tmpstr varchar(1023)	/* owner.object and other uses */
+declare @msg varchar(1024)	/* for sp_getmessage */
+declare @optstr varchar(90)	
+declare @troptstr varchar(90)	
+declare @setting varchar(30)	/* audit option setting */
+declare @ptype varchar(2) 
+declare @deftstr varchar(30)	
+declare @flag_type varchar(10)
+declare @spt_obj varchar(2)
+declare @q_dbname varchar(30)   /* user's db-qualification of object name */
+declare @site  varchar(30)
+declare @q_pname varchar(255)	/* user's qualified object name */
+declare @retcode int
+declare @nullarg 	char(1)
+declare @dummy 		int
+declare @status		int
+declare @gp_enabled	int
+
+
+/*
+** Initialize values
+*/
+select @spt_obj = "Zo"
+select @deftstr = "DEFAULT"
+
+/* 
+** If granular permissions is not enabled then sso_role is required.
+** If granular permissions is enabled then the permission 'manage auditing' is
+** required.  proc_role and proc_auditperm will also do auditing
+** if required. Both will also print error message if required.
+*/
+
+select @nullarg = NULL
+execute @status = sp_aux_checkroleperm "sso_role", "manage auditing",
+                                                @nullarg, @gp_enabled output
+
+/* For Auditing */
+if (@gp_enabled = 0)
+begin
+	if (proc_role("sso_role") = 0)
+		return (1)
+end
+else
+begin
+	select @dummy = proc_auditperm("manage auditing", @status)
+end
+
+if (@status != 0)
+	return (1)
+
+/* Don't display rowcount. */
+set nocount on
+
+/* Load the args into variables.  Trim blanks for args 1 and 3. */
+select @tmpstr = lower(ltrim(rtrim(@arg1)))
+select @dbname = @name
+
+/* Determine the argument semantics based on the first argument */
+if (@tmpstr = "default")
+begin
+	select @default = 1
+end
+else
+begin
+	select @default = 0
+	/*
+	** Load the @procname and @owner variables
+	*/
+	select @procname = @arg1
+	select @owner = NULL
+	if (@procname is not NULL)
+	begin
+		exec @retcode = sp_namecrack @procname, @site output,
+					     @q_dbname output, @owner output,
+					     @q_pname output
+		/*
+		** if you qualified the name, it needs to be this site and db.
+		*/
+		if ((@q_dbname is not null) and (@q_dbname != db_name()) or
+			(@site is not null) and (@site != @@servername))
+		begin
+			/* 18227, "'%1!' is not in the current database" */
+			raiserror 18227, @procname
+			return (1)
+		end
+ 
+		select @objid = object_id(@procname)
+
+                /*
+                ** an object of this type must exist 
+                */
+		if (@objid is NULL) or
+		   ((select count(*) from sysobjects 
+			where (id = @objid and
+			type in  ('P', 'TR', 'IT', 'XP'))) = 0) 
+		begin
+			/* 17461, "Object does not exist in this database."  */
+			raiserror 17461
+			return (1)
+		end
+ 
+                /*
+                ** Construct procname so the output is uniform.
+                ** For input of form (owner.name), this is redundant, but it
+                ** covers all of the other combinations.
+                */
+                if (@owner is NULL)
+                begin
+                        select @owner = user_name(uid) from sysobjects
+                                where id = @objid
+                end
+                select @procname = @owner + '.' + @q_pname
+
+	end /* if (@procname is not NULL) */
+end /* else if (@tmpstr not "default") */
+
+/*
+** create temp table for output
+** Note that we use this table for outputting defaults as well as the
+** non-default option settings; if defaults, then pname is "DEFAULT"
+*/
+/* pname could be site.db.owner.proc and max length is 30*3 + 255 + 3 */
+create table #output (pname varchar(348), opname varchar(14), 
+	setting varchar(4), db varchar(30))
+
+/*
+** set up cursor for looking at all object options
+*/
+declare opt_cursor cursor for select name from master.dbo.spt_values
+	where (type = @spt_obj and name like "exec%")
+
+/*
+** The rest of this proc will be divided into the default <database> case and
+** the non-default case.  First we'll do the default case.
+*/
+if @default = 1
+begin
+	/*
+	** If no dbname was provdided, we'll display the names of
+	** all databases that have some sort of default sproc auditing enabled,
+	** along with the type of default auditing enabled.
+	**
+	** If a dbname was provided, we'll display the default auditing status
+	** of that database (whether enabled or not).
+	*/
+
+	/* signify audit flag for default sproc/trigger */
+        select @flag_type = "defpraud"
+
+	select @all = 0
+
+	if @dbname is NULL
+	begin
+		/*
+		** First make sure there's at least one database with
+		** an active default. If not, just print a message and
+		** return.
+		*/
+		if (select count(name) from master.dbo.sysdatabases
+		    where defpraud > 0) = 0
+		begin
+			/*
+			** 18007, "No databases currently have default
+			**	   sproc/trigger auditing enabled.
+			*/
+			exec sp_getmessage 18007, @msg output
+			print @msg
+			return (0)
+		end
+		select @all = 1
+                declare db_cursor cursor for select name
+                        from master.dbo.sysdatabases
+                        where defpraud > 0
+                open db_cursor
+                fetch db_cursor into @dbname
+	end
+	else
+	if (db_id(@dbname) is NULL)
+	begin
+		/* 17977, "'%1!' does not exist." */
+		raiserror 17977, @dbname
+		return (1)
+	end
+
+	/*
+	** Begin the loop.  Break if a dbname name was provided, or
+	** we've run out of databases with active defaults.
+	*/
+	while (1 = 1)
+	begin
+		select @dbid = db_id(@dbname) 
+
+                /*
+                ** set up option cursor
+                */
+                open opt_cursor
+                fetch opt_cursor into @optstr
+ 
+                /*
+                ** get setting for each audit option
+                */
+                while (@@sqlstatus != 2)
+                begin
+                        exec sp_aux_getsptaud @dbid, @flag_type, @optstr,
+                                @setting output
+                        if @setting != "off"
+                                insert #output values (@deftstr, @optstr,
+                                                       @setting, @dbname)
+                        fetch opt_cursor into @optstr
+		end
+                close opt_cursor
+
+                /*
+                ** get next dbname
+                */
+                if @all = 1
+                begin
+                        fetch db_cursor into @dbname
+                        if @@sqlstatus = 2
+                                break
+                end
+                else /* @all = 0 */
+                        break
+ 
+	end	/* while (1 = 1) */
+end	/* if @default = 1 */
+else
+begin	/* regular non-default case */
+	/*
+	** If no name is provided 
+	** display the names and the enabled auditing option(s) of all stored
+	** procs and triggers in the current database that have some sort of
+	** auditing enabled.
+	**
+	** If a sproc/trigger name was provided, display the auditing
+	** status of that particular sproc/trigger.  
+	*/
+
+	/* signify audit flag for objects */
+        select @flag_type = "audflags"
+ 
+	select @all = 0
+
+	if (@procname is NULL)
+	begin
+		/*
+		** First make sure there's at least one sproc/trigger
+		** with an active default. If not, just print a message
+		** and return.
+		*/
+		if (select count(name) from sysobjects 
+		    where audflags != 0 and type in ('TR', 'IT', 'P', 'XP')) = 0
+		begin
+			/*
+			** 18009, "No procs/triggers currently have 
+			**	   auditing enabled.
+			*/
+			exec sp_getmessage 18009, @msg output
+			print @msg
+			return (0)
+		end
+
+                /*
+                ** set up the cursor to look through sysobjects
+                */
+                declare obj_cursor cursor for select id from sysobjects
+			where audflags != 0 and type in ('TR', 'IT', 'P', 'XP')
+                open obj_cursor
+                fetch obj_cursor into @objid
+
+		select  @procname = user_name(uid) + '.' + name from sysobjects 
+			where id = @objid
+
+		select @all = 1
+	end
+
+	/*
+	** Figure out which type of object we have
+	*/
+	select @ptype = type from sysobjects 
+		where id = @objid
+	if @ptype = 'P' or @ptype = 'XP'
+		select @optstr = "exec_procedure"
+	else /* if @ptype = 'TR' or @ptype = 'IT' */
+		select @optstr = "exec_trigger"
+
+	/*
+	** get the name of the current database for the output 
+	*/
+	select @userdbname = db_name() 
+
+	/*
+	** Begin the loop.  Break if an procname was provided, or we've
+	** run out of procs/triggers with auditing enabled.
+	*/
+	while (1 = 1)
+	begin
+ 		/* 
+ 		** put the the setting for each command into #output
+ 		*/
+
+		exec sp_aux_getsptaud @objid, @flag_type, @optstr, 
+			@setting output
+		if @setting != "off"
+			insert #output values (@procname, @optstr, 
+				@setting, @userdbname)
+
+                /*
+                ** get next object id
+                */
+                if @all = 1
+                begin
+                        fetch obj_cursor into @objid
+                        if @@sqlstatus = 2
+                                break
+
+                        select @procname = user_name(uid) + '.' + name, 
+			       @ptype = type from sysobjects where id = @objid
+
+			if @ptype = 'P' or @ptype = 'XP'
+				select @optstr = "exec_procedure"
+			else /* if @ptype = 'TR' or @ptype = 'IT' */
+				select @optstr = "exec_trigger"
+                end
+                else /* @all = 0 */
+                        break
+	end	/* while (1 = 1) */
+end
+
+/* 
+** print output table 
+*/ 
+
+exec sp_autoformat @fulltabname = #output,
+	@selectlist = "'Procedure/Trigger' = pname, 'Audit Option' = opname, 'Value' = setting, 'Database' = db",  
+	@orderby = "order by pname"
+
+return (0)
+go
+dump transaction master with truncate_only
+go
+dump transaction sybsystemprocs with truncate_only
+go
+print "Installing sp_aux_displaydbaud"
+go
+
+/*
+** Auxilliary stored procedure for displaying database audit settings
+**
+** If the database parameter is NULL, the settings for all databases are 
+** displayed
+**
+** Input Parameters:
+**	dbname		database name (NULL if none specified)
+** 
+** Output parameters:
+**	none
+** Returns:
+**	0		everything went ok
+**	1		general error
+*/
+
+create or replace procedure sp_aux_displaydbaud
+@dbname varchar(30) = NULL		/* full name of database */
+as
+
+declare @alldb int		/* flag to get all databases */
+declare @dbid int		/* flag to get all databases */
+declare @msg varchar(1024)
+declare @optstr varchar(90)	/* string representation of an audit option */
+declare @setting varchar(30)    /* audit option setting */
+declare @flag_type varchar(10)
+declare @flag_type2 varchar(10)	/* additional database wide options. */ 
+declare @flag_type3 varchar(10)
+declare @spt_db varchar(2) 
+declare @nullarg 	char(1)
+declare @dummy 		int
+declare @status		int
+declare @gp_enabled	int
+
+select @spt_db = "Zd"
+select @alldb = 0
+
+/* 
+** If granular permissions is not enabled then sso_role is required.
+** If granular permissions is enabled then the permission 'manage auditing' is
+** required.  proc_role and proc_auditperm will also do auditing
+** if required. Both will also print error message if required.
+*/
+
+select @nullarg = NULL
+execute @status = sp_aux_checkroleperm "sso_role", "manage auditing",
+                                                @nullarg, @gp_enabled output
+
+/* For Auditing */
+if (@gp_enabled = 0)
+begin
+	if (proc_role("sso_role") = 0)
+		return (1)
+end
+else
+begin
+	select @dummy = proc_auditperm("manage auditing", @status)
+end
+
+if (@status != 0)
+	return (1)
+
+/* Don't display rowcount */
+set nocount on
+
+if @dbname is NULL
+begin
+	/*
+	** If there aren't any databases that have auditing enabled,
+	** just print a message and return.
+	*/
+	if (select count(name) from master.dbo.sysdatabases
+	    where audflags != 0 or  deftabaud != 0  ) = 0
+	begin
+		/*
+		** 17976, "No databases currently have auditing
+		**	   enabled."
+		*/
+		exec sp_getmessage 17976, @msg output
+		print @msg
+		return (0)
+	end
+
+	select @alldb = 1
+	/*
+	** set up the cursor to look through sysdatabases
+	*/
+	declare db_cursor cursor for select name from master.dbo.sysdatabases
+		where audflags != 0 or  deftabaud != 0 
+	open db_cursor
+	fetch db_cursor into @dbname
+end
+else if (db_id(@dbname) is NULL)
+begin
+	/* 17977, "'%1!' does not exist." */
+	raiserror 17977, @dbname
+	return (1)
+end
+
+/*
+** create temp table for output
+*/
+ 
+create table #output (dbname varchar(31), OPname varchar(14),
+                        setting varchar(4))
+
+/*
+** select which audit flag to look at 
+*/
+select @flag_type = "daudflags"
+select @flag_type2 = "daudflags2"
+select @flag_type3 = "daudflags"
+
+/*
+** set up cursor for looking at all database options
+*/
+declare opt_cursor cursor for select name from master.dbo.spt_values
+	where type = @spt_db
+
+/*
+** If @dbname was provided display the auditing status for that database.
+** If no db name provided, we'll get the auditing options for all
+** databases currently in master.dbo.sysdatabases that have auditing
+** enabled.  
+**
+** Begin the loop.  Break if a db name was provided, or we've run out
+** of databases with auditing enabled.
+*/
+
+while (1 = 1)
+begin
+	/* get the dbid for this database */
+	select @dbid = db_id(@dbname) 
+	/*
+	** get first option from cursor
+	*/
+	open opt_cursor
+	fetch opt_cursor into @optstr
+	
+	/*
+	** get setting for each audit option 
+	*/
+	while (@@sqlstatus != 2)
+	begin
+		if ( @optstr in ("encryption_key", "deny", "allow" ))
+		begin
+			select @flag_type = @flag_type2
+		end
+		else
+		begin
+			select @flag_type = @flag_type3
+		end
+		
+		exec sp_aux_getsptaud @dbid, @flag_type, @optstr, 
+			@setting output
+		if @setting != "off"
+			insert #output values (@dbname, @optstr, @setting) 
+		fetch opt_cursor into @optstr
+	end
+	close opt_cursor
+
+	/*
+	** get next dbname
+	*/
+	if @alldb = 1
+	begin
+		fetch db_cursor into @dbname
+		if @@sqlstatus = 2
+			break
+	end
+	else /* @alldb = 0 */
+		break
+end
+
+if (select count(*) from #output) = 0
+begin
+	/*
+	** 17976, "No databases currently have auditing
+	**	   enabled."
+	*/
+	exec sp_getmessage 17976, @msg output
+	print @msg
+	return (0)
+end
+/*
+** print output table
+*/
+
+select "Database Name" = dbname, "Audit Option" = OPname,
+	"Value" = setting
+	from #output
+	order by dbname
+
+return (0)
+go
+dump transaction master with truncate_only
+go
+dump transaction sybsystemprocs with truncate_only
+go
+print "Installing sp_displayaudit"
+go
+
+
+/*
+**	calls aux_display function based on "audcmd" parameter
+**
+**     	sp_displayaudit [ procedure | object | login | role | database | global 
+**		| default_object | default_procedure [ , name ]]
+*/
+
+create or replace procedure sp_displayaudit
+@audcmd varchar(20) = NULL,		/* type of auditing to display */
+@name varchar(511) = NULL		/* name or database to display */
+as
+
+declare @msg varchar(1024)
+declare @nullarg 	char(1)
+declare @dummy 		int
+declare @status		int
+declare @gp_enabled	int
+
+
+
+/* check if user has sso role, proc_role will also do auditing
+** if required. proc_role will also print error message if required.
+*/
+
+/* 
+** If granular permissions is not enabled then sso_role is required.
+** If granular permissions is enabled then the permission 'manage auditing' is
+** required.  proc_role and proc_auditperm will also do auditing
+** if required. Both will also print error message if required.
+*/
+
+select @nullarg = NULL
+execute @status = sp_aux_checkroleperm "sso_role", "manage auditing",
+                                                @nullarg, @gp_enabled output
+
+/* For Auditing */
+if (@gp_enabled = 0)
+begin
+	if (proc_role("sso_role") = 0)
+		return (1)
+end
+else
+begin
+	select @dummy = proc_auditperm("manage auditing", @status)
+end
+
+if (@status != 0)
+	return (1)
+
+/*
+** distribute to subprocedures 
+*/
+if @audcmd = "procedure"
+	exec sp_aux_displaysprocaud @name
+else if (@audcmd = "default_procedure" or @audcmd = "default procedure")
+	exec sp_aux_displaysprocaud "default", @name 
+else if @audcmd = "object"
+	exec sp_aux_displayobjaud @name
+else if (@audcmd = "default_object" or  @audcmd = "default object")
+	exec sp_aux_displayobjaud "default", @name
+else if @audcmd = "login"
+	exec sp_aux_displaylogaud @name
+else if @audcmd = "role"
+	exec sp_aux_displayrolaud @name
+else if @audcmd = "database"
+	exec sp_aux_displaydbaud @name
+else if @audcmd = "global"
+	exec sp_aux_displayoptaud @name
+else if @audcmd is NULL
+
+/*
+** display everything we can
+*/
+begin
+	exec sp_aux_displaysprocaud NULL, NULL
+	exec sp_aux_displaysprocaud "default", NULL
+	exec sp_aux_displayobjaud NULL, NULL
+	exec sp_aux_displayobjaud "default", NULL
+	exec sp_aux_displaylogaud NULL, NULL
+	exec sp_aux_displaydbaud NULL, NULL
+	exec sp_aux_displayoptaud NULL, NULL
+end
+else
+begin
+	/*
+	** 18556, "Usage: sp_displayaudit [ procedure | object | login | 
+	**	role | database | global | default_object | default_procedure 
+	**	[ , name ]]"
+	*/
+	exec sp_getmessage 18556, @msg output 
+	print @msg
+	return (0)
+end
+
+return (0)
+
+go
+exec sp_procxmode 'sp_displayaudit', 'anymode'
+go
+grant execute on sp_displayaudit to public
+go
+dump transaction master with truncate_only
+go
+dump transaction sybsystemprocs with truncate_only
+go
+print "Installing sp_confighistory"
+go
+
+/* Sccsid = "%Z% generic/sproc/src/%M% %I% %G%" */
+
+create or replace procedure sp_confighistory (
+	@parm1		varchar(32) = NULL,
+	@parm2		varchar(32) = NULL )
+as
+begin
+	/*
+	** Do not allow sp_confighistory to run with in a transaction.
+	*/
+	if @@trancount > 0
+	begin
+		raiserror 17260, "sp_confighistory"
+		return (-1)
+	end
+	else
+	begin
+		set transaction isolation level 1
+		set chained off
+		set nocount on
+	end
+
+	/*
+	** sa_role or mon_role is required to execute this procedure.
+	*/
+	declare @has_sa_role	int
+	declare @has_mon_role	int
+	select	@has_sa_role	= has_role("sa_role", 1)
+	select	@has_mon_role	= has_role("mon_role", 1)
+	if ((@has_sa_role = 0) and (@has_mon_role = 0))
+	begin
+		print "Only users with sa_role or mon_role can execute this command."
+		return (-2)
+	end
+
+	/*
+	** Process command "help"
+	*/
+	if @parm1 = "help"
+	begin
+		print "Parameters for sp_confighistory:"
+		print " create_view                 - create the events view"
+		print " <no parameter>              - show all items"
+		print " last[<items_num>]           - show latest items"
+		print " <begin_date>[, <end_date>]  - show items by date"
+		print " area[, <area_name>]         - show items by area"
+		print " type[, <type_name>]         - show items by type"
+		print " target[, <target_name>]     - show items by target"
+		print " element[, <element_name>    - show items by element"
+		print " help                        - show this usage"
+		return (0)
+	end
+
+	/*
+	** Process command "create_view".
+	*/
+	if @parm1 = "create_view"
+	begin
+		if (@has_sa_role = 0)
+		begin
+			print "Only users with sa_role can execute this command."
+			return (-3)
+		end
+		if (db_name() != "sybsecurity")
+		begin
+			print "You should be in the sybsecurity database to execute this command."
+			return (-4)
+		end
+
+		declare @create_view_cmd	varchar(2000)
+		declare @union_clause		varchar(400)
+		declare @tabname		varchar(50)
+		declare @tabidx			int
+
+		select @tabidx = 1
+		while (@tabidx <= 8)
+		begin
+			select @tabname = "sysaudits_0" +
+				convert(char(1), @tabidx)
+			select @tabidx = @tabidx + 1
+			if not exists (select * from sysobjects
+				where name = @tabname)
+					continue
+			select @union_clause = @union_clause + case
+				when @union_clause != NULL then ' union ' end +
+				'select * from ' + @tabname
+		end
+
+		if exists (select * from sybsecurity.dbo.sysobjects
+			where name = 'ch_events')
+				drop view ch_events
+		select @create_view_cmd = "create view ch_events as select
+			area = convert(varchar(10), substring(extrainfo,
+				charindex('^1', extrainfo) + 2,
+				charindex('^2', extrainfo) -
+				charindex('^1', extrainfo) - 2)),
+			type = convert(varchar(30), substring(extrainfo,
+				charindex('^2', extrainfo) + 2,
+				charindex('^3', extrainfo) -
+				charindex('^2', extrainfo) - 2)),
+			target = convert(varchar(30), substring(extrainfo,
+				charindex('^3', extrainfo) + 2,
+				charindex('^4', extrainfo) -
+				charindex('^3', extrainfo) - 2)),
+			element = convert(varchar(255), substring(extrainfo,
+				charindex('^4', extrainfo) + 2,
+				charindex('^5', extrainfo) -
+				charindex('^4', extrainfo) - 2)),
+			oldvalue = convert(varchar(255), substring(extrainfo,
+				charindex('^5', extrainfo) + 2,
+				charindex('^6', extrainfo) -
+				charindex('^5', extrainfo) - 2)),
+			newvalue = convert(varchar(255), substring(extrainfo,
+				charindex('^6', extrainfo) + 2,
+				charindex('^7', extrainfo) -
+				charindex('^6', extrainfo) - 2)),
+			mode = convert(varchar(10), substring(extrainfo,
+				charindex('^7', extrainfo) + 2,
+				charindex('^8', extrainfo) -
+				charindex('^7', extrainfo) - 2)),
+			timestamp = eventtime,
+			username = loginname,
+			instanceid = convert(tinyint, substring(extrainfo,
+				charindex('^8', extrainfo) + 2,
+				charindex('^9', extrainfo) -
+				charindex('^8', extrainfo) - 2))
+			from (" + @union_clause + ") dt_sysaudits_all
+			where event = 154 and sequence = 1"
+		exec (@create_view_cmd)
+	end
+
+	if exists (select * from sybsecurity.dbo.sysobjects
+		where name = 'ch_events')
+	begin
+		if @parm1 = "create_view"
+		begin
+			exec ("grant select on ch_events to mon_role")
+			print "Create view ch_events successfully."
+			return (0)
+		end
+	end
+	else
+	begin
+		if @parm1 = "create_view"
+		begin
+			print "Create view ch_events failed."
+			return (-5)
+		end
+		print "View ch_events does not exist. Use 'sp_confighistory create_view' to create this view."
+		return (-6)
+	end
+
+	if (@has_mon_role = 0)
+	begin
+		print "Only users with mon_role can execute this command."
+		return (-3)
+	end
+
+	/*
+	** Process subcommand <NULL>
+	*/
+	if @parm1 = NULL
+	begin
+		exec sp_autoformat "sybsecurity.dbo.ch_events"
+		return (0)
+	end
+
+	/*
+	** Process command "last[<items_num>]".
+	*/
+	else if (charindex("last", @parm1) = 1)
+	begin
+		if @parm2 != NULL
+		begin
+			print "Invalid parameter '%1!'. Use 'sp_confighistory help' to show usage.", @parm2
+			return (-7)
+		end
+
+		declare @items_num	int
+		select @items_num = 1	/* default value is 1 */
+
+		if char_length(@parm1) > 4
+		begin
+			declare @items_num_str	varchar(30)
+			select @items_num_str = substring(@parm1, 5,
+				char_length(@parm1))
+
+			if (isnumeric(@items_num_str) != 1)
+			begin
+				print "Invalid parameter '%1!'. Use 'sp_confighistory help' to show usage.", @parm1
+				return (-7)
+			end
+
+			select @items_num = convert(numeric,
+				@items_num_str)
+		end
+
+		declare @user_name		varchar(100)
+		declare @tmptable_name		varchar(100)
+		declare @create_tmptable_cmd	varchar(255)
+		declare @drop_tmptable_cmd	varchar(255)
+		select	@user_name = name from tempdb.dbo.sysusers
+			where suid = suser_id()
+		select	@tmptable_name = "tempdb." +
+			isnull(@user_name, "guest") + ".cha_showlast_tmptable"
+		select	@create_tmptable_cmd =
+			"set rowcount @items_num " +
+			"select * into " + @tmptable_name +
+			"  from sybsecurity.dbo.ch_events" +
+			"  order by timestamp desc"
+		select	@drop_tmptable_cmd =
+			"if exists (select 1 from tempdb.dbo.sysobjects" +
+			"  where name = 'cha_showlast_tmptable')" +
+			"  drop table " + @tmptable_name
+		exec (@drop_tmptable_cmd)
+		exec (@create_tmptable_cmd)
+		exec sp_autoformat @tmptable_name
+		exec (@drop_tmptable_cmd)
+		return (0)
+	end
+
+	/*
+	** Process command "<begin_date>[, <end_date>]".
+	*/
+	else if (isdate(@parm1) = 1)
+	begin
+		declare @filter		varchar(255)
+		select @filter = "where timestamp >= '" + @parm1 + "'"
+		if (isdate(@parm2) = 1)
+			select @filter = @filter +
+				" and timestamp <= '" + @parm2 + "'"
+		else if @parm2 is not NULL
+		begin
+			print "Invalid parameter '%1!'. Use 'sp_confighistory help' to show usage.", @parm2
+			return (-7)
+		end
+
+		exec sp_autoformat "sybsecurity.dbo.ch_events", NULL, @filter
+		return (0)
+	end
+
+	/*
+	** Process command "area", "type", "target", "element".
+	*/
+	else if @parm1 in ("area", "type", "target", "element")
+	begin
+		if @parm2 is NULL
+		begin
+			declare @distinct_query_cmd	varchar(255)
+			select @distinct_query_cmd = "select distinct " +
+				@parm1 + " from sybsecurity.dbo.ch_events"
+			exec (@distinct_query_cmd)
+			return (0)
+		end
+
+		select @filter = "where " + @parm1 + " like '%" + @parm2 + "%'"
+		exec sp_autoformat "sybsecurity.dbo.ch_events", NULL, @filter
+		return (0)
+	end
+
+	/*
+	** Invalid parameter
+	*/
+	else
+	begin
+		print "Invalid parameter '%1!'. Use 'sp_confighistory help' to show usage.", @parm1
+		return (-7)
+	end
+end
+go
+exec sp_procxmode 'sp_confighistory', 'anymode'
+go
+grant execute on sp_confighistory to public
+go
+dump transaction master with truncate_only
+go
+dump transaction sybsystemprocs with truncate_only
+go
+print "Installing sp_addaudittable"
+go
+
+/* Sccsid = "%Z% generic/sproc/src/%M% %I% %G%" */
+/*      11.0    1.0     12/06/95        sproc/src/addaudittable */
+
+/*
+** 18238, "You cannot create a total of more than 8 audit tables."
+** 18239, "Creating segment '%1!' on '%2!' device."
+** 18240, "Creating table '%1!' on '%2!' segment."
+*/
+
+create or replace procedure sp_addaudittable
+@devname	varchar(255) = NULL /* device on which the table is to be created */
+as
+declare @returncode	int		/* from sp_addsegment */
+declare @table_count	int		/* # of audit tables */
+declare @msg 		varchar(1024)	/* for sp_getmessage */
+declare @segname 	varchar(255)	/* for creating segment, if required */
+declare	@status		int
+declare @dummy		int
+declare @gp_enabled	int
+
+declare @nullarg 	char(1)
+
+select @status = 0
+
+
+/*
+**  If we're in a transaction, disallow this since it might make recovery
+**  impossible.
+*/
+if @@trancount > 0
+begin
+	/* 17260, "Can't run %1! from within a transaction." */
+	raiserror 17260, "sp_addaudittable"
+	return (1)
+end
+
+/*
+** If granular permissions is not enabled then sso_role is required.
+** If granular permissions is enabled then the permission 'manage auditing' is
+** required.  proc_role and proc_auditperm will also do auditing
+** if required. Both will also print error message if required.
+*/
+
+select @nullarg = NULL
+execute @status = sp_aux_checkroleperm "sso_role", 
+			"manage auditing", @nullarg, @gp_enabled output
+
+/* call proc_role to get the audit record */
+if (@gp_enabled = 0)
+begin
+	if (proc_role("sso_role") = 0) return 1
+end
+else
+begin
+	select @dummy = proc_auditperm("manage auditing", @status)
+end
+
+if (@status != 0)
+	return (1)
+
+
+if (db_name() != "sybsecurity")
+begin
+	/*
+	** 17985, "You must be in the sybsecurity database to run
+	**	   this procedure"
+	*/
+	raiserror 17985
+	return (-1)
+end
+else
+begin
+	set chained off
+end
+
+set transaction isolation level 1
+
+/* Get how many audit tables exist currently */
+select @table_count = count(*) from sysobjects where name like "sysaudits_%"
+
+/* 
+** If no device name is specified, create appropriate segment on the
+** device on which sybsecurity database is created
+*/
+if (@devname is NULL)
+begin
+	print "Syntax: sp_addaudittable <device_name> | 'default'"
+	return(1)
+end
+else if (@devname = "default")
+begin
+	/* set device name to be the device on which sybsecurity was created */
+	select @devname = b.name from master..sysusages a, 
+		master..sysdevices b where a.lstart = 0 and
+		a.dbid = db_id ("sybsecurity") and 
+		a.vdevno = b.vdevno and
+		(b.status | 2) != 0
+end
+
+/* Formulate the appropriate segment name */
+if ( @table_count < 8)
+	select @segname = "aud_seg_0" + convert(char(1), @table_count + 1)
+else
+begin
+		/* 18238, "You cannot create a total of more than 8 audit tables." */
+		raiserror 18238
+		return (-2)
+end
+
+/* create the segment */
+exec sp_getmessage 18239, @msg output
+print @msg, @segname, @devname
+
+exec sp_addsegment @segname, sybsecurity, @devname
+
+/* create the table on the appropriate segment */
+if (@table_count = 0)
+begin
+	exec sp_getmessage 18240, @msg output
+	print @msg, "sysaudits_01", @segname
+	create table sysaudits_01
+	(
+		event 		smallint not null,
+		eventmod 	smallint not null,
+
+		spid            smallint not null,
+
+		eventtime 	datetime not null,
+		sequence 	smallint not null,
+		suid 		int not null,
+		dbid 		smallint null,
+		objid 		int null,
+		xactid		binary(6) null,
+		loginname	varchar(30) null,
+		dbname		varchar(30) null,
+		objname		varchar(255) null,
+		objowner	varchar(30) null,
+		extrainfo 	varchar(255) null,
+
+		nodeid		tinyint null
+
+
+	) lock allpages on @segname
+end
+else if (@table_count = 1)
+begin
+	exec sp_getmessage 18240, @msg output
+	print @msg, "sysaudits_02", @segname
+	create table sysaudits_02
+	(
+		event 		smallint not null,
+		eventmod 	smallint not null,
+
+		spid            smallint not null,
+
+		eventtime 	datetime not null,
+		sequence 	smallint not null,
+		suid 		int not null,
+		dbid 		smallint null,
+		objid 		int null,
+		xactid		binary(6) null,
+		loginname	varchar(30) null,
+		dbname		varchar(30) null,
+		objname		varchar(255) null,
+		objowner	varchar(30) null,
+		extrainfo 	varchar(255) null,
+
+		nodeid		tinyint null
+
+	) lock allpages  on @segname
+end
+else if (@table_count = 2)
+begin
+	exec sp_getmessage 18240, @msg output
+	print @msg, "sysaudits_03", @segname
+	create table sysaudits_03
+	(
+		event 		smallint not null,
+		eventmod 	smallint not null,
+
+		spid            smallint not null,
+
+		eventtime 	datetime not null,
+		sequence 	smallint not null,
+		suid 		int not null,
+		dbid 		smallint null,
+		objid 		int null,
+		xactid		binary(6) null,
+		loginname	varchar(30) null,
+		dbname		varchar(30) null,
+		objname		varchar(255) null,
+		objowner	varchar(30) null,
+		extrainfo 	varchar(255) null,
+
+		nodeid		tinyint null
+
+	) lock allpages on @segname
+end
+else if (@table_count = 3)
+begin
+	exec sp_getmessage 18240, @msg output
+	print @msg, "sysaudits_04", @segname
+	create table sysaudits_04
+	(
+		event 		smallint not null,
+		eventmod 	smallint not null,
+
+		spid            smallint not null,
+
+		eventtime 	datetime not null,
+		sequence 	smallint not null,
+		suid 		int not null,
+		dbid 		smallint null,
+		objid 		int null,
+		xactid		binary(6) null,
+		loginname	varchar(30) null,
+		dbname		varchar(30) null,
+		objname		varchar(255) null,
+		objowner	varchar(30) null,
+		extrainfo 	varchar(255) null,
+
+		nodeid		tinyint null
+
+	) lock allpages  on @segname
+end
+else if (@table_count = 4)
+begin
+	exec sp_getmessage 18240, @msg output
+	print @msg, "sysaudits_05", @segname
+	create table sysaudits_05
+	(
+		event 		smallint not null,
+		eventmod 	smallint not null,
+
+		spid            smallint not null,
+
+		eventtime 	datetime not null,
+		sequence 	smallint not null,
+		suid 		int not null,
+		dbid 		smallint null,
+		objid 		int null,
+		xactid		binary(6) null,
+		loginname	varchar(30) null,
+		dbname		varchar(30) null,
+		objname		varchar(255) null,
+		objowner	varchar(30) null,
+		extrainfo 	varchar(255) null,
+
+		nodeid		tinyint null
+
+	) lock allpages  on @segname
+end
+else if (@table_count = 5)
+begin
+	exec sp_getmessage 18240, @msg output
+	print @msg, "sysaudits_06", @segname
+	create table sysaudits_06
+	(
+		event 		smallint not null,
+		eventmod 	smallint not null,
+
+		spid            smallint not null,
+
+		eventtime 	datetime not null,
+		sequence 	smallint not null,
+		suid 		int not null,
+		dbid 		smallint null,
+		objid 		int null,
+		xactid		binary(6) null,
+		loginname	varchar(30) null,
+		dbname		varchar(30) null,
+		objname		varchar(255) null,
+		objowner	varchar(30) null,
+		extrainfo 	varchar(255) null,
+
+		nodeid		tinyint null
+
+	) lock allpages on @segname
+end
+else if (@table_count = 6)
+begin
+	exec sp_getmessage 18240, @msg output
+	print @msg, "sysaudits_07", @segname
+	create table sysaudits_07
+	(
+		event 		smallint not null,
+		eventmod 	smallint not null,
+
+		spid            smallint not null,
+
+		eventtime 	datetime not null,
+		sequence 	smallint not null,
+		suid 		int not null,
+		dbid 		smallint null,
+		objid 		int null,
+		xactid		binary(6) null,
+		loginname	varchar(30) null,
+		dbname		varchar(30) null,
+		objname		varchar(255) null,
+		objowner	varchar(30) null,
+		extrainfo 	varchar(255) null,
+
+		nodeid		tinyint null
+
+	) lock allpages  on @segname
+end
+else if (@table_count = 7)
+begin
+	exec sp_getmessage 18240, @msg output
+	print @msg, "sysaudits_08", @segname
+	create table sysaudits_08
+	(
+		event 		smallint not null,
+		eventmod 	smallint not null,
+
+		spid            smallint not null,
+
+		eventtime 	datetime not null,
+		sequence 	smallint not null,
+		suid 		int not null,
+		dbid 		smallint null,
+		objid 		int null,
+		xactid		binary(6) null,
+		loginname	varchar(30) null,
+		dbname		varchar(30) null,
+		objname		varchar(255) null,
+		objowner	varchar(30) null,
+		extrainfo 	varchar(255) null,
+
+		nodeid		tinyint null
+
+	) lock allpages on @segname
+end
+
+return(0)
+go
+exec sp_procxmode 'sp_addaudittable', 'anymode'
+go
+grant execute on sp_addaudittable to public
+go
+dump transaction master with truncate_only
+go
+dump transaction sybsystemprocs with truncate_only
+go
+dump transaction sybsecurity to diskdump with truncate_only
+go
+sp_configure "allow updates", 0
+go
+print 'Security installation is complete.'
+go
+
+declare @retval int
+exec @retval = sp_version 'installsecurity', NULL, '16.0 SP03 PL06/EBF 28334 SMP/P/x86_64/SLES 11.1/ase160sp03pl06x/3457/64-bit/OPT/Mon Nov 26 02:57:13 2018', 'end'
+if (@retval != 0) select syb_quit()
+go
+

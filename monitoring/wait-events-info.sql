@@ -27,3 +27,19 @@ select Description,
        group   by Description
        order   by 3 desc
 go
+
+
+select WaitEventID,
+ convert(numeric(16,0),Waits) as "Waits",
+ convert(numeric(16,0),WaitTime) as "WaitTime"
+ into #waits1
+ from monSysWaits
+go
+select Description,
+ convert(int,sum(w.Waits)) as "Count",
+ convert(int,sum(w.WaitTime)/1000) as "Seconds"
+ from #waits1 w,
+ monWaitEventInfo ei
+ where w.WaitEventID = ei.WaitEventID
+ group by Description
+ order by 3 desc

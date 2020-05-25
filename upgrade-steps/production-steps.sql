@@ -10,7 +10,7 @@ go
 /opt/sap/cron_scripts/dump_databases.pl > /opt/sap/cron_scripts/cron_logs/dump_databases.log 2>&1
 go
 --3.  stop ASE and SYB_BACKUP
---3.1 stop REP Server???
+--3.1 disable REP Server monitor jobs
 --4.  run the upgrade process (first phase only)
 --5.  start ASE and SYB_BACKUP and let it recover all databases (when the query below returns nothing).
 select * from master..sysdatabases where status & 64 = 64

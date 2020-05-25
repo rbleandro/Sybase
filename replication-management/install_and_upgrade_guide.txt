@@ -1,0 +1,137 @@
+download the desired version
+run ./setup.bin -i console
+follow the prompts untill the end of the process
+
+source $SYBASE/SYBASE.sh
+
+vi $SYBASE/interfaces
+
+Add the following to the interfaces file: the primary SAP ASE, the replicate SAP ASE, the SAP Replication Server, and the server containing the RSSD database (in this case embedded):
+
+VREPHOME_RS
+   master tcp ether !!HOSTIPHERE!! 11752
+   query tcp ether !!HOSTIPHERE!! 11752
+#
+VREPHOME_RS_ERSSD
+   master tcp ether !!HOSTIPHERE!! 11751
+   query tcp ether !!HOSTIPHERE!! 11751
+
+
+cd $SYBASE/REP-15_5/init/rs 
+
+cp install.rs VREPHOME.rs #create a copy of the config file
+
+Modify the parameter values in VREPHOME.rs file. Check the file replication-server-initial-build-configuration-file.txt for more details.
+
+#remove any partition files previously created(in case you're installing replication server for the first time or reinstalling the product)
+rm /opt/sybase/vrephome_part1.dat 
+
+#(re)create the partition file for the erssd
+touch /opt/sybase/vrephome_part1.dat 
+
+#remove the files of any previously created erssd (in case you're installing replication server for the first time or reinstalling the product)
+rm /opt/sybase/data/*.db
+rm /opt/sybase/data/*.log
+rm /opt/sybase/data/*.mlg
+
+cd $SYBASE/REP-15_5/install 
+
+./rs_init -r ../init/rs/VREPHOME.rs
+
+#test the connection to the PRS
+isql -Usa -Ps9b2s3 -SVREPSHOME_RS 
+
+/***************** UPGRADE STEPS ************************/
+
+#backup the erssd 
+sysadmin erssd, backup
+
+#Shut down the preupgrade version of Replication Server.
+ps -ef | grep -v grep | grep repserver
+
+#Back up the entire set of files and directories under $SYBASE.
+#download the desired version
+
+#run the setup of the new version and point to the current version installation folder
+./setup.bin -i console
+
+#follow the prompts untill the end of the process
+
+source $SYBASE/SYBASE.sh
+
+#move and mirror log files to avoid "invalid files" errors
+ls /opt/sybase/data/*.mlg #if this returns anything, move these files somewhere else
+mkdir /opt/sybase/data/old
+mv /opt/sybase/data/*.mlg /opt/sybase/data/old/
+
+#if you are performing a major version upgrade copy the contents from one install folder to the other and edit them to point to the new version
+cd /opt/sybase/REP-15_5/install
+cp *.* ../../REP-16_0/install
+cp RUN_VREPHOME_RS ../../REP-16_0/install
+
+#grant the sa_role to every db_maint user in both PDBs and RDBs (example below)
+grant role 'sa_role' to dba_maint
+
+
+#upgrade the erssd. ATTENTION! CHANGE THE ASA FOLDER TO THE CORRECT VERSION!!!! PICK ONLY ONE OF THE 2 COMMANDS BELOW DEPENDING IF YOU'RE UPGRADING TO A MINOR OR MAJOR VERSION
+/opt/sybase/REP-15_5/bin/repserver -upgr -SVREPHOME_RS -C/opt/sybase/REP-15_5/install/VREPHOME_RS.cfg -E/opt/sybase/REP-15_5/install/VREPHOME_RS.log -I/opt/sybase/interfaces -A/opt/sybase/REP-15_5/ASA16
+/opt/sybase/REP-16_0/bin/repserver -upgr -SVREPHOME_RS -C/opt/sybase/REP-16_0/install/VREPHOME_RS.cfg -E/opt/sybase/REP-16_0/install/VREPHOME_RS.log -I/opt/sybase/interfaces -A/opt/sybase/REP-16_0/ASA17
+
+#do one of the commands below depending on the new version
+cd /opt/sybase/REP-15_5/install/  
+cd /opt/sybase/REP-16_0/install/
+
+#now start the replication server
+./RUN_VREPHOME_RS 
+
+#Check the upgraded Replication Server
+#Verify that the RSSD or ERSSD version of the upgraded Replication Server is correct.
+#You can check one of:
+#Replication Server error log – you see: Upgraded RSSD successfully. The current RSSD version is '1600003'.
+#rs_config table – log in to isql and enter:
+select * from rs_config where optionname='current_rssd_version'
+
+#Check that the Replication Server modules are running by executing admin who with the relevant options.
+
+#revoke the sa_role granted before
+revoke role 'sa_role' from dba_maint
+
+#test the replication emiting a rs_ticket or doing simple writes to one PDB
+
+
+/***************** if you have problems with ASA database log when starting replication server do the steps below ************************/
+
+#Save ASA.sh script and chmod +x ASA.sh
+  
+> vi $SYBASE/ASA.sh
+SALANG=us_english
+export SALANG
+ASA=$SYBASE/$SYBASE_REP/ASA17
+export ASA
+ASA_LIB=$ASA/lib
+export ASA_LIB
+ASA_BIN=$ASA/bin
+export ASA_BIN
+PATH=$ASA_BIN:$PATH
+export PATH
+LD_LIBRARY_PATH=$ASA_LIB:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH
+  
+#Note: This RS version is using SQL Anywhere version 11 which is under ASA16 subdirectory. You can figure out the ASA version of your RS version by searching "Starting embedded RSSD" in RS errorlog and get its subdirectory from the ERSSD start command line.
+  
+#Set environment:  
+source /opt/sybase/SYBASE.sh
+source /opt/sybase/ASA.sh
+ 
+Delete *.log and *.mlg file of the ERSSD database.
+
+#Manually start the ASA server with "-f" option and the server will shut down itself after it is recovered without transaction log. Use the following command to start the server without dbspawn.
+/opt/sybase/REP-15_5/ASA16/bin/dbsrv16 -f -s none -ti 0 -x "tcpip(PORT=11751;DOBROAD=NO;BLISTENER=NO)" -o /opt/sybase/REP-15_5/install/VREPHOME_RS_ERSSD.out /opt/sybase/data/VREPHOME_RS_ERSSD.db
+  
+#Restart ASA server normally without "-f"
+  
+/opt/sybase/REP-15_5/ASA16/bin/dbsrv16 -s none -ti 0 -x "tcpip(PORT=11751;DOBROAD=NO;BLISTENER=NO)" -o /opt/sybase/REP-15_5/install/VREPHOME_RS_ERSSD.out /opt/sybase/data/VREPHOME_RS_ERSSD.db
+
+#press 'q' to quit and shut down the server
+  
+#Restart the replication server

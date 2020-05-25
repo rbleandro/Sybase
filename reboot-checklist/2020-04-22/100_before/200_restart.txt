@@ -1,0 +1,10 @@
+--restart sybase
+
+kill xp_server linux process (grab the process number with showserver)
+
+shutdown
+go
+
+cd /opt/sap/ASE-16_0/install
+
+startserver -f RUN_CPDB1

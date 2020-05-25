@@ -1,5 +1,6 @@
 --first get the objects owned by the login. Run this on each database
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner robbie_toyota' when 'P' then 'alter procedure '+ name + ' modify owner robbie_toyota' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
+select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner robbie_toyota' when 'P' then 'alter procedure '+ name + ' modify owner robbie_toyota' end as Command 
+from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
 go 
 
 --run this to modify ownership
@@ -12,9 +13,38 @@ alter table disp_user_regn modify owner robbie_toyota
 alter table disp_users modify owner robbie_toyota
 alter table tot_hs modify owner robbie_toyota
 go
---after that, drop all aliases that point to the login on the database
-sp_dropalias N'jesse_robinson', N'dbo' 
-GO
+
+
+--GET USER AND ITS MAPPINGS INSIDE ALL DATABASES. DROP THE USER INSIDE EACH DATABASE
+declare dbcurs cursor for
+select name from master..sysdatabases where status2 !=-32768 --and name not like 'tempdb%' and name not in ('sybsecurity','dba')
+go
+Declare @dbname varchar(50), @login varchar(100),@str0 text
+set @str0=""
+set @login ='tech_user'
+open dbcurs
+fetch next from dbcurs into @dbname
+While @@fetch_status = 0
+Begin
+
+set @str0 = @str0 + "select '"+@dbname+"' as db,u.name,'exec "+@dbname+"..sp_dropuser '+u.name
+from "+@dbname+"..sysusers u 
+LEFT JOIN master..syslogins l ON u.suid = l.suid 
+LEFT JOIN "+@dbname+"..sysusers g ON u.gid = g.uid 
+LEFT JOIN "+@dbname+"..sysalternates a ON u.suid = a.altsuid 
+LEFT JOIN master..syslogins o ON a.suid = o.suid 
+WHERE 1=1 AND u.suid != -2 AND u.uid != u.gid 
+and (u.name = '"+@login+"' or l.name = '"+@login+"' or o.name = '"+@login+"')
+union
+"
+fetch next from dbcurs into @dbname
+End
+set @str0 = @str0 + "select 'master',name,'sp_dropuser "+@login+"' from master..sysusers where 1=2"
+
+exec dba.dbo.settxt @str0
+go
+Deallocate dbcurs
+go
 
 --finnaly drop the login
 USE master
@@ -24,164 +54,3 @@ GO
 
 select * from syslogins where name in ('dryden_zarate','jesse_robinson','dbo','sa','DBA')
 go
-
-/*
-
-use cmf_data_lm
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use collectpickup
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use collectpickup_lm
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use cpscan
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use dqm_data_lm
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use eput_db
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use evkm_data
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use liberty_db
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use linehaul_data
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use lm_stage
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use lmscan
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use master
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use model
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use mpr_data
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use mpr_data_lm
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use pms_data
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use rate_update
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use rev_hist
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use rev_hist_lm
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use shippingws
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use sort_data
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use svp_cp
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use svp_lm
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use sybmgmtdb
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use sybsecurity
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use sybsystemdb
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use sybsystemprocs
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use tempdb
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use tempdb1
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use tempdb2
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use tempdb3
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use tempdb4
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use tempdb5
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use tempdb6
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use tempdb7
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use tempdb8
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use tempdb9
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use termexp
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-use uss
-GO
-select uid, loginame, name,type,db_name() as DBNAME,case type when 'U' then 'alter table '+ name + ' modify owner dbo' when 'P' then 'alter table '+ name + ' modify owner dbo' end as Command from sysobjects where loginame != NULL and uid =1 and loginame = "dryden_zarate" and type not in ('D')
-GO
-
-*/

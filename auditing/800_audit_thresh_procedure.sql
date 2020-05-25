@@ -1,7 +1,6 @@
 use sybsecurity
 go
 
-
 CREATE OR REPLACE PROCEDURE dbo.audit_thresh
 as
 begin
@@ -10,7 +9,7 @@ begin
 -- Since we are bcp'ing data out and emailing it
 --==================
 
-select event into #temp from sybsecurity.dbo.event_descriptions where event in (70,18,92,27,28,41,3,10,27,64,38,11,28,12,16,34,40,58,19,42,71,73,74,78,84,89,104,105)
+select event into #temp from sybsecurity.dbo.event_descriptions where event in (70,18,92,27,28,41,3,10,27,64,11,28,12,16,34,40,58,19,42,71,73,74,78,84,89,104,105)
 
 delete sybsecurity..sysaudits where eventtime < dateadd(dd,-30,getdate())
 -- delete non DML audits
@@ -41,7 +40,7 @@ begin
 insert sybsecurity..sysaudits
 select event, eventmod, spid, eventtime, sequence, suid, dbid, objid, xactid, loginname, dbname, objname, objowner, extrainfo, nodeid from sysaudits_01 
 where 
-event in (select event from #temp) and dbname not like 'tempdb%'
+event in (select event from #temp) and dbname not like 'tempdb%' and dbname not in ('sybsystemprocs')
 
 truncate table sysaudits_01
 end
@@ -51,7 +50,7 @@ begin
 insert sybsecurity..sysaudits
 select event, eventmod, spid, eventtime, sequence, suid, dbid, objid, xactid, loginname, dbname, objname, objowner, extrainfo, nodeid from sysaudits_02 
 where 
-event in (select event from #temp) and dbname not like 'tempdb%'
+event in (select event from #temp) and dbname not like 'tempdb%' and dbname not in ('sybsystemprocs')
 
 truncate table sysaudits_02
 end
@@ -61,7 +60,7 @@ begin
 insert sybsecurity..sysaudits
 select event, eventmod, spid, eventtime, sequence, suid, dbid, objid, xactid, loginname, dbname, objname, objowner, extrainfo, nodeid from sysaudits_03 
 where 
-event in (select event from #temp) and dbname not like 'tempdb%'
+event in (select event from #temp) and dbname not like 'tempdb%' and dbname not in ('sybsystemprocs')
 
 truncate table sysaudits_03
 end
@@ -71,7 +70,7 @@ begin
 insert sybsecurity..sysaudits
 select event, eventmod, spid, eventtime, sequence, suid, dbid, objid, xactid, loginname, dbname, objname, objowner, extrainfo, nodeid from sysaudits_04 
 where 
-event in (select event from #temp) and dbname not like 'tempdb%'
+event in (select event from #temp) and dbname not like 'tempdb%' and dbname not in ('sybsystemprocs')
 
 truncate table sysaudits_04
 end
@@ -81,7 +80,7 @@ begin
 insert sybsecurity..sysaudits
 select event, eventmod, spid, eventtime, sequence, suid, dbid, objid, xactid, loginname, dbname, objname, objowner, extrainfo, nodeid from sysaudits_05 
 where 
-event in (select event from #temp) and dbname not like 'tempdb%'
+event in (select event from #temp) and dbname not like 'tempdb%' and dbname not in ('sybsystemprocs')
 
 truncate table sysaudits_05
 end
@@ -91,7 +90,7 @@ begin
 insert sybsecurity..sysaudits
 select event, eventmod, spid, eventtime, sequence, suid, dbid, objid, xactid, loginname, dbname, objname, objowner, extrainfo, nodeid from sysaudits_06 
 where 
-event in (select event from #temp) and dbname not like 'tempdb%'
+event in (select event from #temp) and dbname not like 'tempdb%' and dbname not in ('sybsystemprocs')
 
 truncate table sysaudits_06
 end
@@ -101,7 +100,7 @@ begin
 insert sybsecurity..sysaudits
 select event, eventmod, spid, eventtime, sequence, suid, dbid, objid, xactid, loginname, dbname, objname, objowner, extrainfo, nodeid from sysaudits_07 
 where 
-event in (select event from #temp) and dbname not like 'tempdb%'
+event in (select event from #temp) and dbname not like 'tempdb%' and dbname not in ('sybsystemprocs')
 
 truncate table sysaudits_07
 end
@@ -111,7 +110,7 @@ begin
 insert sybsecurity..sysaudits
 select event, eventmod, spid, eventtime, sequence, suid, dbid, objid, xactid, loginname, dbname, objname, objowner, extrainfo, nodeid from sysaudits_08 
 where 
-event in (select event from #temp) and dbname not like 'tempdb%'
+event in (select event from #temp) and dbname not like 'tempdb%' and dbname not in ('sybsystemprocs')
 
 truncate table sysaudits_08
 end
@@ -119,7 +118,4 @@ end
 return(0)
 
 end
- 
-GO
-sp_procxmode 'dbo.audit_thresh', 'Unchained'
 GO

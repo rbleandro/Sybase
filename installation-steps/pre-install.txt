@@ -1,0 +1,55 @@
+sudo mkdir /opt/sap
+sudo mkdir /opt/sap/data
+sudo chown sybase:sybase /opt/sap
+sudo chown sybase:sybase /opt/sap/data
+sudo yum install glibc.i686 -y
+sudo yum install telnet -y
+sudo iptables -F
+sudo systemctl stop firewalld
+sudo systemctl disable firewalld
+sudo systemctl mask --now firewalld
+
+
+#if installing rep server 15.7 or below:
+sudo mkdir /opt/sybase
+sudo mkdir /opt/sybase/data
+sudo chown sybase:sybase /opt/sybase
+sudo chown sybase:sybase /opt/sybase/data
+
+----------
+
+vi ~/.bashrc
+
+# .bash_profile
+
+# Get the aliases and functions
+if [ -f ~/.bashrc ]; then
+	. ~/.bashrc
+fi
+
+# User specific environment and startup programs
+
+PATH=$PATH:$HOME/.local/bin:$HOME/bin
+
+export PATH
+source /opt/sap/SYBASE.sh
+cd /opt/sap
+
+#aliases for ase server
+alias la='ls -la'
+alias seeif='cat /opt/sap/interfaces'
+alias eif='vi /opt/sap/interfaces'
+alias startase='startserver -f /opt/sap/ASE-16_0/install/RUN_VASEHOME1 -f /opt/sap/ASE-16_0/install/RUN_VASEHOME1_BS'
+alias conase='isql -Usa -Ps9b2s3 -SVASEHOME1'
+
+#aliases for rep server
+alias la='ls -la'
+alias seeif='cat /opt/sybase/interfaces'
+alias eif='vi /opt/sybase/interfaces'
+alias startase='startserver -f /opt/sap/ASE-16_0/install/RUN_VREPHOME'
+alias ntlf='cd /opt/sybase/REP-15_5/install'
+alias conrep='isql -Usa -Ps9b2s3 -SVREPHOME_RS'
+alias checkrep='ps -ef | grep -v grep | grep repserver'
+
+----------
+

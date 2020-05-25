@@ -49,19 +49,19 @@ COMMENT ON USER rev_hist_lm_rep1 IS 'User is used for IQ replication from rev_hi
 
 2- Create connection for the IQ in SRS for that db
 
-create connection to CPIQ.rev_hist_lm_iq_conn1 
+create connection to CPIQ.rev_hist_iq_conn1 
 using profile rs_ase_to_iq;standard
 set username to rev_hist_lm_rep1
 set password to sybase
 go
 
 -- Alter the connection to enable HVAR
-alter connection to CPIQ.rev_hist_lm_iq_conn1 set dsi_compile_enable to 'on'
-alter connection to CPIQ.rev_hist_lm_iq_conn1 set dsi_cmd_batch_size to '65536' 
-alter connection to CPIQ.rev_hist_lm_iq_conn1 set dsi_compile_max_cmds to '200000'
-alter connection to CPIQ.rev_hist_lm_iq_conn1 set dsi_cdb_max_size to '10240'
-suspend connection to CPIQ.rev_hist_lm_iq_conn1
-resume connection to CPIQ.rev_hist_lm_iq_conn1
+alter connection to CPIQ.rev_hist_iq_conn1 set dsi_compile_enable to 'on'
+alter connection to CPIQ.rev_hist_iq_conn1 set dsi_cmd_batch_size to '65536' 
+alter connection to CPIQ.rev_hist_iq_conn1 set dsi_compile_max_cmds to '200000'
+alter connection to CPIQ.rev_hist_iq_conn1 set dsi_cdb_max_size to '10240'
+suspend connection to CPIQ.rev_hist_iq_conn1
+resume connection to CPIQ.rev_hist_iq_conn1
 
 *****************--Example of setting a table for replication to IQ--****************************************
 
@@ -69,12 +69,12 @@ resume connection to CPIQ.rev_hist_lm_iq_conn1
 -- decimal datatype with precision and scale, eg: decimail(6,1) should be replaced with decimal in repdef
 -- All bits should be converted to int in IQ, or replication will stack trace
 
-drop replication definition CPDB2_iq_lm_revhst_rep
+drop replication definition CPDB1_iq_cp_svb_outstanding_rep
 
-create replication definition CPDB2_iq_lm_revhst_rep
+create replication definition CPDB1_iq_cp_svb_outstanding_rep
 with primary at CPDB1.rev_hist_lm
-with primary table named dbo.'revhsth'
-with replicate table named DBA.'cp_revhsth'
+with primary table named dbo.'svb_outstanding'
+with replicate table named DBA.'cp_svb_outstanding'
 (
     columns without NULL specification...
 )	
@@ -83,10 +83,10 @@ primary key ( PK columns here )
 
 --Very important, if a table has a keyword such as cube, we need to add quoted in the column specification.
 --and use the following command as well for that table
--- alter connection  to CPIQ.lm_revhstf1_iq_conn1 for replicate table named dbo.revhstf1 set dsi_quoted_identifier to 'on'
--- alter connection  to CPIQ.lm_revhstf1_iq_conn1 set dsi_quoted_identifier to 'on'
+alter connection  to CPIQ.rev_hist_iq_conn1 for replicate table named DBA.svb_outstanding set dsi_quoted_identifier to 'on'
+alter connection  to CPIQ.rev_hist_iq_conn1 set dsi_quoted_identifier to 'on'
 
-sp_setreptable 'dbo.revhsth','true', owner_on --execute this on publisher ASE
+sp_setreptable 'dbo.svb_outstanding','true', owner_on --execute this on publisher ASE
 
 -- It would also be best, to guarantee accurate data, that you empty the table before you
 -- create the sub. That way while the data load, all subsequent replicated trans will be queued up
@@ -99,28 +99,28 @@ sp_setreptable 'dbo.revhsth','true', owner_on --execute this on publisher ASE
 -- You must add dbo to table name, since you are replicating with owner_on
 -- Setting i2di for all tables of a connection, can be an issue.
 -- We will need to enable this for each table, and we should not use i2di for tables, which do not have any primary or unique keys!!!
-alter connection to CPIQ.rev_hist_lm_iq_conn1 for replicate table named dbo.revhsth set dsi_command_convert to 'i2di,u2di';
-alter connection to CPIQ.rev_hist_lm_iq_conn1 set dsi_row_count_validation to 'off'; -- This can stay on for the whole connection;
-suspend connection to CPIQ.rev_hist_lm_iq_conn1;
-resume connection to CPIQ.rev_hist_lm_iq_conn1 execute transaction;
+alter connection to CPIQ.rev_hist_iq_conn1 for replicate table named DBA.svb_outstanding set dsi_command_convert to 'i2di,u2di';
+alter connection to CPIQ.rev_hist_iq_conn1 set dsi_row_count_validation to 'off'; -- This can stay on for the whole connection;
+suspend connection to CPIQ.rev_hist_iq_conn1;
+resume connection to CPIQ.rev_hist_iq_conn1 execute transaction;
 
 -- create sub and at the same time...
-create subscription CPDB2_iq_lm_revhst_sub for CPDB2_iq_lm_revhst_rep with replicate at CPIQ.rev_hist_lm_iq_conn1 without materialization;
+create subscription CPDB1_iq_cp_svb_outstanding_sub for CPDB1_iq_cp_svb_outstanding_rep with replicate at CPIQ.rev_hist_iq_conn1 without materialization;
 
 -- Wait to make sure that sub is created on BOTH Primary and Replicate!! And then...
 -- suspend connection for the duration of initial load
-suspend connection to CPIQ.rev_hist_lm_iq_conn1;
+suspend connection to CPIQ.rev_hist_iq_conn1;
 
 -- Now start the initial load in IQ through insert location command
 -- Note tables with identity column need to have identity insert on in IQ
---  set temporary option identity_insert = 'dbo.revhsth'
-truncate table revhsth
+--  set temporary option identity_insert = 'DBA.svb_outstanding'
+truncate table svb_outstanding
 go
-insert into revhsth IGNORE CONSTRAINT UNIQUE 0 location 'CPDB1.rev_hist_lm' packetsize 7168
+insert into svb_outstanding IGNORE CONSTRAINT UNIQUE 0 location 'CPDB1.rev_hist_lm' packetsize 7168
 { 
 	select 
 	...
-	from revhsth 
+	from svb_outstanding 
 }
 commit
   
@@ -131,26 +131,26 @@ commit
 -- disable i2di and u2di, since that slows replication down, see below
 -- resume connection to start initial sync of replicated tran
 
-resume connection to CPIQ.rev_hist_lm_iq_conn1;
-admin who,sqm,CPIQ,rev_hist_lm_iq_conn1;
+resume connection to CPIQ.rev_hist_iq_conn1;
+admin who,sqm,CPIQ,rev_hist_iq_conn1;
 
 --once the replicated tran are loaded, run a rs_ticket to make sure all data has been replicated.
--- Or you can check admin who,sqm,CPIQ,rev_hist_lm_iq_conn1  If first and last seg block are same 
+-- Or you can check admin who,sqm,CPIQ,rev_hist_iq_conn1  If first and last seg block are same 
 -- then it is in sync and you can disable the following
 
-alter connection to CPIQ.rev_hist_lm_iq_conn1 for replicate table named dbo.revhsth set dsi_command_convert to 'none';
-alter connection to CPIQ.rev_hist_lm_iq_conn1 set dsi_row_count_validation to 'on';
-suspend connection to CPIQ.rev_hist_lm_iq_conn1;
-resume connection to CPIQ.rev_hist_lm_iq_conn1;
+alter connection to CPIQ.rev_hist_iq_conn1 for replicate table named DBA.svb_outstanding set dsi_command_convert to 'none';
+alter connection to CPIQ.rev_hist_iq_conn1 set dsi_row_count_validation to 'on';
+suspend connection to CPIQ.rev_hist_iq_conn1;
+resume connection to CPIQ.rev_hist_iq_conn1;
 
 --save all in a file in hqvsybrep3:/home/sybase/IQ_replication
 
 --************ In case you need to drop any repdef or sub, here is example of both *******--
 -- Disable table replication
-sp_setreptable revhsth,'false'
+sp_setreptable svb_outstanding,'false'
 
 --Drop sub
-drop subscription CPDB2_iq_lm_revhst_sub for CPDB2_iq_lm_revhst_rep with replicate at CPIQ.rev_hist_lm_iq_conn1 without purge
+drop subscription CPDB1_iq_cp_svb_outstanding_sub for CPDB1_iq_cp_svb_outstanding_rep with replicate at CPIQ.rev_hist_iq_conn1 without purge
 
 --Drop repdef
-drop replication definition CPDB2_iq_lm_revhst_rep
+drop replication definition CPDB1_iq_cp_svb_outstanding_rep

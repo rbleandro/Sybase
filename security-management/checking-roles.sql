@@ -33,6 +33,11 @@ GO
 --list all users within a role
 select sl.name, sr.name from master..sysloginroles slr, master..syslogins sl, master..syssrvroles sr where slr.suid = sl.suid and slr.srid = sr.srid and sr.name = 'sa_role'
 go
+--checking user role assignments
+select sl.name, sr.name from master..sysloginroles slr, master..syslogins sl, master..syssrvroles sr where slr.suid = sl.suid and slr.srid = sr.srid 
+and sr.name not in ('sa_role','sso_role','oper_role','sybase_ts_role','replication_role','mon_role','js_admin_role','js_user_role','sa_serverprivs_role')
+and sr.name not like 'replication%'
+go
     
 select 'grant select on ' + name + ' to public ' from sysobjects where type ='U' order by name
 go
@@ -40,3 +45,5 @@ go
 select 'grant exec on ' + name + ' to public ' from sysobjects where type ='P' order by name
 go    
 
+sp_displayroles tech_user
+go

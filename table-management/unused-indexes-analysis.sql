@@ -1,18 +1,25 @@
-select DB = db_name(),
+select distinct DB = db_name(),
 TableName = object_name(i.id, db_id()),
 IndexName = i.name,
 IndID = i.indid
 ,a.UsedCount 
-from master..monOpenObjectActivity a, 
-sysindexes i
+,i.crdate
+,dbo.sp_f_getbigint(spaceusage(db_id(), object_id(object_name(i.id, db_id()))),"row count",default,default) as '#rows'
+,i.status
+,i.status2
+from master..monOpenObjectActivity a, sysindexes i
 where a.ObjectID = i.id
 and a.IndexID = i.indid
 and (a.UsedCount = 0 or a.UsedCount is NULL)
 and i.indid > 0
 and i.id > 99 -- No system tables
+and status & 2 != 2 
+and status2 & 2 != 2 
+and status2 & 512 != 512
+and indid != 255
 --and db_name()='svp_cp'
-and object_name(i.id, db_id())='address'
-order by 2, 4 asc
+--and object_name(i.id, db_id())='ri_export_detail_lm'
+order by 7 desc
 go
 
 
