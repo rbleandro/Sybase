@@ -1,4 +1,4 @@
-Steps to Setup IQ Replication for a database:
+Steps to Setup IQ Replication for a table:
 
 --First section only applies to IQ and SRS tuning params
 in SRS on IQ connection from SRS
@@ -14,98 +14,82 @@ Minimize_storage = ‘on’ – be sure to turn this parameter on either globall
 Append_Load = ‘on’ – Its recommended to turn this for RTL performance.  This option prevents IQ from filling in the blank spaces in indexes. Instead, IQ will append to the end of indexes.  Some caution and monitoring (sp_iqindexframentation for non-FP) is required since table fragmentation can occur.
 set option public.Append_Load = 'On'
 
-1- Create user for that database in IQ: eg cmf_data_lm (For loomis dbs)
-
-CREATE USER cmf_data_lm_rep1 IDENTIFIED BY sybase;
-GRANT ROLE DBA TO cmf_data_lm_rep1 WITH NO ADMIN OPTION;
-GRANT ROLE readers TO cmf_data_lm_rep1 WITH NO ADMIN OPTION;
-GRANT ROLE PUBLIC TO cmf_data_lm_rep1 WITH NO ADMIN OPTION;
-GRANT ROLE lmo TO cmf_data_lm_rep1 WITH NO ADMIN OPTION;
-GRANT DELETE ANY TABLE TO cmf_data_lm_rep1 WITH NO ADMIN OPTION;
-GRANT INSERT ANY TABLE TO cmf_data_lm_rep1 WITH NO ADMIN OPTION;
-GRANT SELECT ANY TABLE TO cmf_data_lm_rep1 WITH NO ADMIN OPTION;
-GRANT UPDATE ANY TABLE TO cmf_data_lm_rep1 WITH NO ADMIN OPTION;
-GRANT TRUNCATE ANY TABLE TO cmf_data_lm_rep1 WITH NO ADMIN OPTION;
-GRANT CREATE ANY OBJECT TO cmf_data_lm_rep1 WITH NO ADMIN OPTION;
-GRANT EXECUTE ANY PROCEDURE TO cmf_data_lm_rep1 WITH NO ADMIN OPTION;
-GRANT LOAD ANY TABLE TO cmf_data_lm_rep1 WITH NO ADMIN OPTION;
-COMMENT ON USER cmf_data_lm_rep1 IS 'User is used for IQ replication from cmf_data_lm';
-
-1a- Create user for that database: eg rev_hist_lm (For canpar dbs)
-CREATE USER rev_hist_lm_rep1 IDENTIFIED BY sybase;
-GRANT ROLE DBA TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
-GRANT ROLE readers TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
-GRANT ROLE PUBLIC TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
-GRANT ROLE dbo TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
-GRANT DELETE ANY TABLE TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
-GRANT INSERT ANY TABLE TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
-GRANT SELECT ANY TABLE TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
-GRANT UPDATE ANY TABLE TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
-GRANT CREATE ANY OBJECT TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
-GRANT EXECUTE ANY PROCEDURE TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
-GRANT TRUNCATE ANY TABLE TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
-GRANT LOAD ANY TABLE TO rev_hist_lm_rep1 WITH NO ADMIN OPTION;
-COMMENT ON USER rev_hist_lm_rep1 IS 'User is used for IQ replication from rev_hist_lm';
+1a- Create user for that database: eg cmd_data_lm (For canpar dbs)
+CREATE USER rev_hist_rep1 IDENTIFIED BY sybase;
+GRANT ROLE DBA TO rev_hist_rep1 WITH NO ADMIN OPTION;
+GRANT ROLE readers TO rev_hist_rep1 WITH NO ADMIN OPTION;
+GRANT ROLE PUBLIC TO rev_hist_rep1 WITH NO ADMIN OPTION;
+GRANT ROLE dbo TO rev_hist_rep1 WITH NO ADMIN OPTION;
+GRANT DELETE ANY TABLE TO rev_hist_rep1 WITH NO ADMIN OPTION;
+GRANT INSERT ANY TABLE TO rev_hist_rep1 WITH NO ADMIN OPTION;
+GRANT SELECT ANY TABLE TO rev_hist_rep1 WITH NO ADMIN OPTION;
+GRANT UPDATE ANY TABLE TO rev_hist_rep1 WITH NO ADMIN OPTION;
+GRANT CREATE ANY OBJECT TO rev_hist_rep1 WITH NO ADMIN OPTION;
+GRANT EXECUTE ANY PROCEDURE TO rev_hist_rep1 WITH NO ADMIN OPTION;
+GRANT TRUNCATE ANY TABLE TO rev_hist_rep1 WITH NO ADMIN OPTION;
+GRANT LOAD ANY TABLE TO rev_hist_rep1 WITH NO ADMIN OPTION;
+COMMENT ON USER rev_hist_rep1 IS 'User is used for IQ replication from cmd_data_lm';
 
 2- Create connection for the IQ in SRS for that db
+drop connection to CPIQ.rev_hist_iq_conn1
+go
 
-create connection to CPIQ.rev_hist_iq_conn1 
+create connection to CPIQ.rev_hist_iq_conn1
 using profile rs_ase_to_iq;standard
-set username to rev_hist_lm_rep1
+set username to rev_hist_rep1
 set password to sybase
 go
 
 -- Alter the connection to enable HVAR
 alter connection to CPIQ.rev_hist_iq_conn1 set dsi_compile_enable to 'on'
-alter connection to CPIQ.rev_hist_iq_conn1 set dsi_cmd_batch_size to '65536' 
+alter connection to CPIQ.rev_hist_iq_conn1 set dsi_cmd_batch_size to '65536'
 alter connection to CPIQ.rev_hist_iq_conn1 set dsi_compile_max_cmds to '200000'
 alter connection to CPIQ.rev_hist_iq_conn1 set dsi_cdb_max_size to '10240'
 suspend connection to CPIQ.rev_hist_iq_conn1
 resume connection to CPIQ.rev_hist_iq_conn1
 
-*****************--Example of setting a table for replication to IQ--****************************************
+**********************************--Example of setting a table for replication to IQ--****************************************
 
 -- Tips : Points to remember
 -- decimal datatype with precision and scale, eg: decimail(6,1) should be replaced with decimal in repdef
--- All bits should be converted to int in IQ, or replication will stack trace
+-- All bit columns should be converted to int in IQ, or replication will stack trace
+-- Very important, if a table has a keyword such as cube, we need to add quoted in the column specification.
+--and use the following command as well for that table
+alter connection to CPIQ.rev_hist_iq_conn1 for replicate table named DBA.cparf06i set dsi_quoted_identifier to 'on'
+alter connection to CPIQ.rev_hist_iq_conn1 set dsi_quoted_identifier to 'on'
 
-drop replication definition CPDB1_iq_cp_svb_outstanding_rep
+drop replication definition CPDB1_iq_cp_cparf06i_rep
 
-create replication definition CPDB1_iq_cp_svb_outstanding_rep
-with primary at CPDB1.rev_hist_lm
-with primary table named dbo.'svb_outstanding'
-with replicate table named DBA.'cp_svb_outstanding'
+create replication definition CPDB1_iq_cp_cparf06i_rep
+with primary at CPDB1.cmd_data_lm
+with primary table named dbo.'cparf06i'
+with replicate table named DBA.'cp_cparf06i'
 (
     columns without NULL specification...
-)	
+)
 primary key ( PK columns here )
 
-
---Very important, if a table has a keyword such as cube, we need to add quoted in the column specification.
---and use the following command as well for that table
-alter connection  to CPIQ.rev_hist_iq_conn1 for replicate table named DBA.svb_outstanding set dsi_quoted_identifier to 'on'
-alter connection  to CPIQ.rev_hist_iq_conn1 set dsi_quoted_identifier to 'on'
-
-sp_setreptable 'dbo.svb_outstanding','true', owner_on --execute this on publisher ASE
+--execute this on publisher ASE
+sp_setreptable 'dbo.cparf06i','true', owner_on 
 
 -- It would also be best, to guarantee accurate data, that you empty the table before you
 -- create the sub. That way while the data load, all subsequent replicated trans will be queued up
 -- and once the initial load completes, data will get in sync. But, you will need to set i2di and u2di
 -- Because the subscription does not know that there is data already there in replicate, it will also
--- complain about row count mismatch, so we will need to ignore that for the duration of initial load and 
+-- complain about row count mismatch, so we will need to ignore that for the duration of initial load and
 -- initial catch up of replicated trans in the queue
 -- See below
 
 -- You must add dbo to table name, since you are replicating with owner_on
 -- Setting i2di for all tables of a connection, can be an issue.
 -- We will need to enable this for each table, and we should not use i2di for tables, which do not have any primary or unique keys!!!
-alter connection to CPIQ.rev_hist_iq_conn1 for replicate table named DBA.svb_outstanding set dsi_command_convert to 'i2di,u2di';
+alter connection to CPIQ.rev_hist_iq_conn1 for replicate table named DBA.cparf06i set dsi_command_convert to 'i2di,u2di';
 alter connection to CPIQ.rev_hist_iq_conn1 set dsi_row_count_validation to 'off'; -- This can stay on for the whole connection;
 suspend connection to CPIQ.rev_hist_iq_conn1;
 resume connection to CPIQ.rev_hist_iq_conn1 execute transaction;
 
 -- create sub and at the same time...
-create subscription CPDB1_iq_cp_svb_outstanding_sub for CPDB1_iq_cp_svb_outstanding_rep with replicate at CPIQ.rev_hist_iq_conn1 without materialization;
+create subscription CPDB1_iq_lm_cparf06i_sub for CPDB1_iq_lm_cparf06i_rep with replicate at CPIQ.rev_hist_iq_conn1 without materialization;
 
 -- Wait to make sure that sub is created on BOTH Primary and Replicate!! And then...
 -- suspend connection for the duration of initial load
@@ -113,20 +97,20 @@ suspend connection to CPIQ.rev_hist_iq_conn1;
 
 -- Now start the initial load in IQ through insert location command
 -- Note tables with identity column need to have identity insert on in IQ
---  set temporary option identity_insert = 'DBA.svb_outstanding'
-truncate table svb_outstanding
+--  set temporary option identity_insert = 'DBA.cparf06i'
+truncate table cparf06i
 go
-insert into svb_outstanding IGNORE CONSTRAINT UNIQUE 0 location 'CPDB1.rev_hist_lm' packetsize 7168
-{ 
-	select 
+insert into cparf06i IGNORE CONSTRAINT UNIQUE 0 location 'CPDB1.cmd_data_lm' packetsize 7168
+{
+	select
 	...
-	from svb_outstanding 
+	from cparf06i
 }
 commit
-  
+
 --  set temporary option identity_insert = ''
 
--- after the initial load completes, issue a rs_ticket, to make sure that you have synced all queued trans 
+-- after the initial load completes, issue a rs_ticket, to make sure that you have synced all queued trans
 -- Check if the ticket shows up in IQ and then
 -- disable i2di and u2di, since that slows replication down, see below
 -- resume connection to start initial sync of replicated tran
@@ -135,10 +119,10 @@ resume connection to CPIQ.rev_hist_iq_conn1;
 admin who,sqm,CPIQ,rev_hist_iq_conn1;
 
 --once the replicated tran are loaded, run a rs_ticket to make sure all data has been replicated.
--- Or you can check admin who,sqm,CPIQ,rev_hist_iq_conn1  If first and last seg block are same 
+-- Or you can check admin who,sqm,CPIQ,rev_hist_iq_conn1  If first and last seg block are same
 -- then it is in sync and you can disable the following
 
-alter connection to CPIQ.rev_hist_iq_conn1 for replicate table named DBA.svb_outstanding set dsi_command_convert to 'none';
+alter connection to CPIQ.rev_hist_iq_conn1 for replicate table named DBA.cparf06i set dsi_command_convert to 'none';
 alter connection to CPIQ.rev_hist_iq_conn1 set dsi_row_count_validation to 'on';
 suspend connection to CPIQ.rev_hist_iq_conn1;
 resume connection to CPIQ.rev_hist_iq_conn1;
@@ -147,10 +131,10 @@ resume connection to CPIQ.rev_hist_iq_conn1;
 
 --************ In case you need to drop any repdef or sub, here is example of both *******--
 -- Disable table replication
-sp_setreptable svb_outstanding,'false'
+sp_setreptable cparf06i,'false'
 
 --Drop sub
-drop subscription CPDB1_iq_cp_svb_outstanding_sub for CPDB1_iq_cp_svb_outstanding_rep with replicate at CPIQ.rev_hist_iq_conn1 without purge
+drop subscription CPDB1_iq_cp_cparf06i_sub for CPDB1_iq_cp_cparf06i_rep with replicate at CPIQ.rev_hist_iq_conn1 without purge
 
 --Drop repdef
-drop replication definition CPDB1_iq_cp_svb_outstanding_rep
+drop replication definition CPDB1_iq_cp_cparf06i_rep

@@ -1,15 +1,21 @@
-
-CREATE OR REPLACE PROCEDURE dbo.rp_kill_recvsleep_sessions
+CREATE OR REPLACE PROCEDURE dbo.rp_kill_recvsleep_sessions(@user varchar(100))
 as
 
-Declare @spid int,@user varchar(100),@str nvarchar(128)
+Declare @spid int,@str nvarchar(128)
 
-select top 1 @user=username 
-from dba.dbo.monNumSession 
+if exists(
+select count(*) as qty
+, SUSER_NAME(sp.suid) as 'user'
+,CASE sp.clientapplname  WHEN '' THEN sp.program_name WHEN NULL THEN sp.program_name ELSE sp.clientapplname END as program
+,CASE sp.clienthostname WHEN '' THEN sp.hostname WHEN NULL THEN sp.hostname ELSE sp.clienthostname END as hostname
+from master..sysprocesses sp
 where 1=1
-and NumSessions>50 
-and snapTime = (select max(snapTime) from dba.dbo.monNumSession)
-order by NumSessions desc
+group by CASE sp.clienthostname WHEN '' THEN sp.hostname WHEN NULL THEN sp.hostname ELSE sp.clienthostname END
+,CASE sp.clientapplname  WHEN '' THEN sp.program_name WHEN NULL THEN sp.program_name ELSE sp.clientapplname END 
+,SUSER_NAME(sp.suid)
+having count(*)>250
+and SUSER_NAME(sp.suid)=@user
+)
 
 declare spidcurs cursor for
 select spid from master..sysprocesses where status='recv sleep' and suser_name(suid)=@user
@@ -27,10 +33,3 @@ End
 Deallocate spidcurs
 GO
 
-
-select * 
-from dba.dbo.monNumSession 
-where 1=1
-and NumSessions>50 
-and snapTime = (select max(snapTime) from dba.dbo.monNumSession)
-order by NumSessions desc

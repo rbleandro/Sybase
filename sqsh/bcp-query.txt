@@ -174,6 +174,72 @@ select t.* from cpscan..bk_cp_cpscan_delrec_200210_2006 b
 inner join cpscan..tttl_dr_delivery_record t on b.conv_time_date = t.conv_time_date and t.employee_num = b.employee_num and t.delivery_rec_num = b.delivery_rec_num
 \bcp -S CPDB1 cpscan.dbo.tttl_dr_delivery_record
 
+select *
+from lm_stage.dbo.ups_status_mapping
+\bcp -S CPSYBTEST lm_stage.dbo.ups_status_mapping
+
+select *
+from lm_stage.dbo.ups_loop_mapping
+\bcp -S CPSYBTEST lm_stage.dbo.ups_loop_mapping
+
+select *
+from lm_stage.dbo.employee_login
+\bcp -S CPSYBTEST lm_stage.dbo.employee_login
+
+select *
+from lm_stage.dbo.tttl_dr_delivery_record
+\bcp -S CPSYBTEST lm_stage.dbo.tttl_dr_delivery_record
+
+select *
+from lm_stage.dbo.tttl_ex_exception_comment
+\bcp -S CPSYBTEST lm_stage.dbo.tttl_ex_exception_comment
+
+select *
+from lm_stage.dbo.tttl_io_interline_outbound
+\bcp -S CPSYBTEST lm_stage.dbo.tttl_io_interline_outbound
+
+select *
+from lm_stage.dbo.tttl_pr_pickup_record
+\bcp -S CPSYBTEST lm_stage.dbo.tttl_pr_pickup_record
+
+select *
+from lm_stage.dbo.tttl_ps_pickup_shipper
+\bcp -S CPSYBTEST lm_stage.dbo.tttl_ps_pickup_shipper
+
+select *
+from lm_stage.dbo.tttl_pt_pickup_totals
+\bcp -S CPSYBTEST lm_stage.dbo.tttl_pt_pickup_totals
+
+select *
+from lm_stage.dbo.tttl_ev_event
+\bcp -S CPSYBTEST lm_stage.dbo.tttl_ev_event
+
+select *
+from hub_db.dbo.event
+\bcp -S CPSYBTEST hub_db.dbo.event
+
+select *
+from cmf_data.dbo.ilname
+\bcp -S CPSYBTEST cmf_data.dbo.ilname
+
+select * from cmf_data..ilpoxref where extract_date between '07/26/2020' and '08/01/2020'
+\bcp -S CPSYBTEST cmf_data.dbo.ilpoxref_new
+
+select * from cmf_data..ilstop where ilinkage in (select ilinkage from cmf_data..ilpoxref where extract_date between '07/26/2020' and '08/01/2020' )
+\bcp -S CPSYBTEST cmf_data.dbo.ilstop_new
+
+select * from cmf_data..ilparcel  where ilinkage in (select ilinkage from cmf_data..ilpoxref where extract_date between '07/26/2020' and '08/01/2020' )
+\bcp -S CPSYBTEST cmf_data.dbo.ilparcel_new
+
+select * from cmf_data..ilexception where ilinkage in (select ilinkage from cmf_data..ilpoxref where extract_date between '07/26/2020' and '08/01/2020' )
+\bcp -S CPSYBTEST cmf_data.dbo.ilexception_new
+
+select * from cmf_data..ilancillary where ilinkage in (select ilinkage from cmf_data..ilpoxref where extract_date between '07/26/2020' and '08/01/2020' )
+\bcp -S CPSYBTEST cmf_data.dbo.ilancillary_new
+
+select  * from cmf_data..iloodaily where conversation_date between '07/26/2020' and '08/01/2020'
+\bcp -S CPSYBTEST cmf_data.dbo.iloodaily_new
+
 -------------------------------------------------------------------
 
 

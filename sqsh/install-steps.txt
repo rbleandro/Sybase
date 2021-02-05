@@ -3,8 +3,8 @@
 
 subscription-manager register --username amerk71 --password canpar --auto-attach #run only if not registered to rpm already
 cd $HOME
-mkdir Downloads
-mkdir src
+mkdir Downloads #Create a Downloads folder if not exists. 
+mkdir src #Create a src folder if not exists. Copy the compressed file you downloaded to this folder
 cd src
 tar xzf ~/Downloads/sqsh-2.5.16.1.tgz #change your download directory here
 cd sqsh-2.5
@@ -14,12 +14,12 @@ export SYBASE=/opt/sap #execute only if  the environment variable is not already
 make #execute from sqsh-2.5 directory
 sudo make install #execute from sqsh-2.5 directory
 sudo make install.man #execute from sqsh-2.5 directory
-man sqsh #to test man pages
+man sqsh #to test man pages. This step is optional
 
-cp doc/sqshrc-2.5 $HOME/.sqshrc
-chmod 600 $HOME/.sqshrc
-mkdir tmp $HOME/.sqsh
-chmod 700 $HOME/.sqsh
+cp doc/sqshrc-2.5 $HOME/.sqshrc #copying the template .sqshrc configuration file to the home folder. We'll edit this file later to customize the program
+chmod 600 $HOME/.sqshrc #setting up read and write permissions to the file copied in the command above
+mkdir tmp $HOME/.sqsh #creating a tmp folder to be used internally by sqsh
+chmod 700 $HOME/.sqsh #setting up full permissions on the program's folder
 
 #to test
 sqsh -Usa

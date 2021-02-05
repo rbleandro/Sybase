@@ -6,13 +6,13 @@
 #          send messages when errors are found. It also monitors whether the      
 #          $server server and Backup server is up                                 
 #                                                                                 
-#Author:   Amer Khan                                                              
+#Author:   		Amer Khan                                                              
 #Revision:                                                                        
 #Date           Name            Description                                       
 #---------------------------------------------------------------------------------
 #01/07/04       Amer Khan       Originally created                                
 #                                                                                 
-#02/23/06      	Ahsan Ahmed      Modified for email to DBA's and documentation
+#02/23/06      	Ahsan Ahmed     Modified for email to DBA's and documentation
 #July 26 2019	Rafael Leandro	Installed missing Perl modules. Removed redundant emails. Reviewed search keywords.
 ####################################################################################################################################################################
 
@@ -48,9 +48,6 @@ my $delta = Normalize_Delta_YMDHMS($today,$target);
   
 print "$delta->[3]\n";
 
-#die;
-
-
 $echoOut=`echo "$currYear,$currMonth,$currDay,$currHour,0,0" > /opt/sybase/cron_scripts/lastErrorStamp`;
 
 print "Echo error: $echoOut \n";
@@ -59,14 +56,10 @@ print "Echo error: $echoOut \n";
 if($currMin == "-1"){
    $currMin = "59";
 }
-#Prunning monitor script log every 24 hours at 00:00
-#if($currHour == "00" && $currMin == "00"){
-#   `cat /dev/null > /opt/sybase/cron_scripts/cron_logs/monitor_errorlog_$server.log`;
-#}
-
 
 print "Errorlog Checked: $currDate\ $currHour\:$currMin\:$currSec \n";
-
+#CANPARDatabaseAdministratorsStaffList
+my $mail="CANPARDatabaseAdministratorsStaffList";
 
 #Scanning the errorlog...
 $getNextLine = 0;
@@ -76,9 +69,9 @@ while (<ERRORLOG>){
       $tooManyErrors += 1;
       $secondLine = $_;
       print "$firstLine$secondLine\n";
-      if(($tooManyErrors < 5 ) && ($firstLine$secondLine !~ /Deadlock/ || $firstLine$secondLine !~ /IGNORE/i || $firstLine$secondLine !~ /Ambiguous/)){
+      if(($tooManyErrors < 5 ) && ($firstLine !~ /Deadlock/ || $firstLine !~ /IGNORE/i || $firstLine !~ /WARN/i || $firstLine !~ /Ambiguous/ || $secondLine !~ /IGNORE/i || $secondLine !~ /WARN/i) && ($firstLine !~ /WARNING #5185/ && $secondLine !~ /WARNING #5185/) && ($firstLine !~ /WARNING #24068/ && $secondLine !~ /WARNING #24068/) && ($firstLine !~ /Message: 1708/ && $secondLine !~ /Message: 1708/)){
       `/usr/sbin/sendmail -t -i <<EOF
-To: CANPARDatabaseAdministratorsStaffList\@canpar.com,CANPARDBASybaseMobileAlerts\@canpar.com
+To: $mail\@canpar.com,CANPARDBASybaseMobileAlerts\@canpar.com
 Subject: $server SRS Error Alert
 
 Errors Found In $server Errorlog!!!
@@ -89,7 +82,7 @@ print "*********\nMail Sent To the DBA team\n*********\n";
       }else{
          if($tooManyErrors == 5){
          `/usr/sbin/sendmail -t -i <<EOF
-To: CANPARDatabaseAdministratorsStaffList\@canpar.com,CANPARDBASybaseMobileAlerts\@canpar.com
+To: $mail\@canpar.com,CANPARDBASybaseMobileAlerts\@canpar.com
 Subject: $server SRS Error Alert
 
 Errors Found In $server Errorlog!!!
@@ -104,7 +97,8 @@ print "*********\nMail Sent To DBAs\n*********\n";
    }
    if(/$currDate/){
       if (/$currHour\:$currMin\:/){
-         if((/ERROR/ || /SQM_ADD_SEGMENT/ || /cease/ || /Loss detected/ || /sleeping/i || /critically/i || /failed/i || /degradation/i || /deadlock/i || /stack trace/i || /fatal/i || /WARNING/i))
+         #if((/ERROR/ || /SQM_ADD_SEGMENT/ || /cease/ || /Loss detected/ || /sleeping/i || /critically/i || /failed/i || /degradation/i || /deadlock/i || /stack trace/i || /fatal/i || /WARNING/i))
+		 if((/SQM_ADD_SEGMENT/ || /cease/ || /Loss detected/ || /sleeping/i || /critically/i || /degradation/i || /deadlock/i || /stack trace/i || /WARNING/i || /skipped/i))
 		 {
 			$firstLine = $_;
             $getNextLine = 1;

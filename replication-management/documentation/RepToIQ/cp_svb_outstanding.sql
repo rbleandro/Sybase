@@ -1,4 +1,4 @@
-create replication definition CPDB1_iq_cp_svb_outstanding_rep
+create replication definition iq_cp_svb_outstanding_rep
 with primary at CPDB1.rev_hist
 with primary table named dbo.svb_outstanding
 with replicate table named DBA.svb_outstanding
@@ -7,7 +7,7 @@ with replicate table named DBA.svb_outstanding
 	fiscal_week            	 char(7) ,
 	company                	 char(1) ,
 	"status"                 char(30) quoted,
-	manifest_num           	 char(7) ,
+	manifest_num           	 char(8) ,
 	manifest_null          	 char(1) ,
 	reason_code            	 char(90) ,
 	customer_name          	 varchar(50) ,

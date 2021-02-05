@@ -1,0 +1,12 @@
+Get an Administrator command prompt  (not powershell)
+Net use z: \\hqvfs2.canpar.com\datavol /user:{canparnt\a_myadminuser} {password}    **replace the {stuff in brackets} with your admin user and password
+Z:
+Cd \Common\MigrationProject\Rollout\ASENETSYBASE157\pcclient32\ESD
+setupConsole.exe -f CP_Syb_32_ESD -i silent -DAGREE_TO_SYBASE_LICENSE=true
+
+
+Net use z: \\hqvfs2.canpar.com\datavol /user:canparnt\a_rleandro BQueen@2020
+Z:
+Cd \Common\MigrationProject\Rollout\ASENETSYBASE157\pcclient32\ESD
+setupConsole.exe -f CP_Syb_32_ESD -i silent -DAGREE_TO_SYBASE_LICENSE=true
+

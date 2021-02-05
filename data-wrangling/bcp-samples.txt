@@ -8,7 +8,6 @@ scp /opt/sap/db_backups/cmfdata_cp_points_no_ranges.dat sybase@10.3.1.71:~/db_ba
 /opt/sap/OCS-16_0/bin/bcp cmf_data_lm..points_no_ranges out /opt/sap/db_backups/points_no_ranges_20180413_1135.dat -n -S CPDB2 -U sa -P 
 
 
-
 Restoring:
 {
 	Linux
@@ -55,6 +54,10 @@ Restoring:
 /opt/sap/OCS-16_0/bin/bcp scan_compliance..scan_compliance_alt_term_lm in /opt/sap/db_backups/scan_compliance_alt_term_lm.dat -c -t"|" -S CPDB2 -U sa -P 
 /opt/sap/OCS-16_0/bin/bcp scan_compliance..scan_compliance_cust_override_lm in /opt/sap/db_backups/scan_compliance_cust_override_lm.dat -c -t"|" -S CPDB2 -U sa -P 
 /opt/sap/OCS-16_0/bin/bcp scan_compliance..scan_compliance_stats in /opt/sap/db_backups/scan_compliance_stats.dat -c -t"|" -S CPDB2 -U sa -P 
+
+For IQ:
+
+/opt/sybase/OCS-16_0/bin/bcp mpr_data..interco_charge_pieces_iq in /opt/sybase/bcp_data/interco_extract.txt -c -t"," -S CPSYBTEST -U sa -P s9b2s3
 
 usage: bcp [[db_name.]owner.]table_name[:slice_num] [partition pname] {in | out} [filename]
         [-m maxerrors] [-f formatfile] [-e errfile] [-d discardfileprefix]

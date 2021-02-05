@@ -1,5 +1,3 @@
-use cpscan
-go
 CREATE OR REPLACE PROCEDURE dbo.sp_helpsegment_custom
 @segname varchar(255) = NULL		/* segment name */
 as
@@ -51,11 +49,12 @@ end
 **  Show the syssegment entry, then the fragments and size it is on,
 **  then any dependent objects in the database.
 */
-/* Adaptive Server has expanded all '*' elements in the following statement */ select syssegments.segment, syssegments.name, syssegments.status
+/* Adaptive Server has expanded all '*' elements in the following statement */ 
+select syssegments.segment, syssegments.name, syssegments.status
 into #sphelpsegment2rs
 	from syssegments
 		where name = @segname
-exec sp_autoformat @fulltabname = #sphelpsegment2rs
+--exec sp_autoformat @fulltabname = #sphelpsegment2rs
 drop table #sphelpsegment2rs
 /*
 **  Set the bit position for the segment.
@@ -107,8 +106,8 @@ begin
 		and ((d.status & 2 = 2)  or (d.status2 & 8 = 8))
 		and u.vdevno = d.vdevno
 	    group by d.name
-    exec sp_autoformat @fulltabname = #sphelpsegment3rs,
-		@orderby = "order by 1"
+    
+    --exec sp_autoformat @fulltabname = #sphelpsegment3rs,		@orderby = "order by 1"
     drop table #sphelpsegment3rs
 
     -- To avoid errors while creating this sproc because
@@ -136,8 +135,7 @@ begin
 		and u.vdevno = d.vdevno
 	    group by d.name
 
-    exec sp_autoformat @fulltabname = #sphelpsegment4rs,
-		@orderby = "order by 1"
+    --exec sp_autoformat @fulltabname = #sphelpsegment4rs,@orderby = "order by 1"
 
     drop table #sphelpsegment4rs
 
@@ -160,82 +158,83 @@ end
 ** index that doesn't have the segment specification for its
 ** own will use this default segment in sysindexes.
 */
-if (@segname = 'logsegment')
-begin
-	print " "
-	/* 19342, "Objects on segment '%1!':" */
-	exec sp_getmessage 19342, @msg output
-	print @msg, @segname
-	print " "
 
-	/*
-	** Do some special-handling for logsegment. We know that only syslogs
-	** will reside on it, so hard-code the id/indid in the WHERE clause
-	** below. One reason why we do this is that if you run this sproc on
-	** logsegment when a large utility (e.g. ALTER LOCK CHANGE) is going on
-	** concurrently, some times we end up with the scan on syspartitions
-	** below being blocked by the large utility. To avoid that, and to get
-	** the results of the objects bound to logsegment, do this hard-path
-	** short cut.
-	*/
-	select table_name = object_name(p.id), index_name = i.name, i.indid,
-	       partition_name = p.name
-	into #result3
-	from sysindexes i, syssegments s, syspartitions p
-	where s.name = @segname
-	  and s.segment = p.segment
-	  and p.id = i.id
-	  and p.indid = i.indid
-	  and p.id = object_id('syslogs')
-	  and p.indid = 0
+ if (@segname = 'logsegment')
+ begin
+	 print " "
+	 /* 19342, "Objects on segment '%1!':" */
+	 exec sp_getmessage 19342, @msg output
+	 print @msg, @segname
+	 print " "
 
-	exec sp_autoformat @fulltabname='#result3', @orderby='order by 1,3,4'
-end
+	 /*
+	 ** Do some special-handling for logsegment. We know that only syslogs
+	 ** will reside on it, so hard-code the id/indid in the WHERE clause
+	 ** below. One reason why we do this is that if you run this sproc on
+	 ** logsegment when a large utility (e.g. ALTER LOCK CHANGE) is going on
+	 ** concurrently, some times we end up with the scan on syspartitions
+	 ** below being blocked by the large utility. To avoid that, and to get
+	 ** the results of the objects bound to logsegment, do this hard-path
+	 ** short cut.
+	 */
+	 select table_name = object_name(p.id), index_name = i.name, i.indid,
+	        partition_name = p.name
+	 into #result3
+	 from sysindexes i, syssegments s, syspartitions p
+	 where s.name = @segname
+	   and s.segment = p.segment
+	   and p.id = i.id
+	   and p.indid = i.indid
+	   and p.id = object_id('syslogs')
+	   and p.indid = 0
 
-else if exists (select *
-	   from syspartitions p, syssegments s
-	   where s.name = @segname
-	     and s.segment = p.segment)
-begin
-	print " "
-	/* 19342, "Objects on segment '%1!':" */
-	exec sp_getmessage 19342, @msg output
-	print @msg, @segname
-	print " "
+--	 exec sp_autoformat @fulltabname='#result3', @orderby='order by 1,3,4'
+ end
 
-	select table_name = object_name(p.id), index_name = i.name, i.indid,
-	       partition_name = p.name
-	into #result1
-	from sysindexes i, syssegments s, syspartitions p
-	where s.name = @segname
-	  and s.segment = p.segment
-	  and p.id = i.id
-	  and p.indid = i.indid
+ else if exists (select *
+	    from syspartitions p, syssegments s
+	    where s.name = @segname
+	      and s.segment = p.segment)
+ begin
+	 print " "
+	 /* 19342, "Objects on segment '%1!':" */
+	 exec sp_getmessage 19342, @msg output
+	 print @msg, @segname
+	 print " "
 
-	exec sp_autoformat @fulltabname='#result1', @orderby='order by 1,3,4'
-end
+	 select table_name = object_name(p.id), index_name = i.name, i.indid,
+	        partition_name = p.name
+	 into #result1
+	 from sysindexes i, syssegments s, syspartitions p
+	 where s.name = @segname
+	   and s.segment = p.segment
+	   and p.id = i.id
+	   and p.indid = i.indid
+
+--	 exec sp_autoformat @fulltabname='#result1', @orderby='order by 1,3,4'
+ end
 
 
-if exists (select *
-	   from syssegments s, sysindexes i
-	   where s.name = @segname
-	     and s.segment = i.segment)
-begin
-	print " "
-	/* 19341, "Objects currently bound to segment '%1!':" */
-	exec sp_getmessage 19341, @msg output
-	print @msg, @segname
-	print " "
+ if exists (select *
+	    from syssegments s, sysindexes i
+	    where s.name = @segname
+	      and s.segment = i.segment)
+ begin
+	 print " "
+	 /* 19341, "Objects currently bound to segment '%1!':" */
+	 exec sp_getmessage 19341, @msg output
+	 print @msg, @segname
+	 print " "
 
-	select table_name = object_name(i.id), index_name = i.name, i.indid
-	into #result2
-	from sysindexes i, syssegments s
-	where s.name = @segname
-	  and s.segment = i.segment
+	 select table_name = object_name(i.id), index_name = i.name, i.indid
+	 into #result2
+	 from sysindexes i, syssegments s
+	 where s.name = @segname
+	   and s.segment = i.segment
 
-	exec sp_autoformat @fulltabname='#result2', @orderby='order by 1,3'
-	print " "
-end
+	-- exec sp_autoformat @fulltabname='#result2', @orderby='order by 1,3'
+	 print " "
+ end
 
 /*
 ** Print total_size, total_pages, free_pages, used_pages and reserved_pages

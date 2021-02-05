@@ -1,1 +1,0 @@
-select all the jobs on task scheduler and click on "disable"

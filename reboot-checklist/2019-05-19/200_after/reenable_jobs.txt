@@ -1,3 +1,0 @@
-enable datastage and crontab jobs
-
-crontab crontab_backup.txt

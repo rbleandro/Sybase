@@ -11,25 +11,26 @@ this procedure is for minor patches and hotfixes only!!!
 
 extract data from the compressed file with: tar -zxvf ASESERV160003P_6-20012052.TGZ
 
+disable replication alerts (disable crontab on replication server)
 stop Backup Server: issue a "shutdown SYB_BACKUP" within isql
 stop ASE: issue a "shutdown" within isql
-stop XP Server if necessary
+stop XP Server if necessary (execute showserver on linux to see if it is started)
 stop SCC  if present
 stop Cockpit if present
 stop repserver if present
 
 cd /home/sybase/db_backups/ebf28334
-./setup.bin
+./setup.bin -i console
 
 Before running updatease, start the servers using (wait for recovery to complete for all databases): 
 cd /opt/sap/ASE-16_0/install
-startserver -f RUN_CPSYBTEST -f RUN_CPSYBTEST_BS
+startserver -f RUN_CPDB2 -f RUN_CPDB2_BS
 
 Check if all databases are in read-write mode (the following query must return 0 rows): select master..sysdatabases where status & 1024 = 1024
 
-in case some database does not upgrade succesfully, correct the errors (see the upgrade log) and then run: /opt/sap/ASE-16_0/bin/updatease -D/opt/sap -SCPSYBTEST
+in case some database does not upgrade succesfully, correct the errors (see the upgrade log) and then run: /opt/sap/ASE-16_0/bin/updatease -D/opt/sap -SCPDB2
 
-
+reenable replication crontab
 enable cron jobs and dataStage jobs
 to restore cron jobs from the backup file run "crontab -r" and then "crontab crontab_backup.txt". To confirm the restore check "crontab -l"
 reenable cron jobs on IQ, Production and RepServer and Data Stage jobs

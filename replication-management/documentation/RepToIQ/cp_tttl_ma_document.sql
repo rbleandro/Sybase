@@ -1,7 +1,9 @@
-create replication definition CPDB2_iq_tttl_ma_shipment_rep
+drop replication definition iq_tttl_ma_document_rep
+
+create replication definition iq_tttl_ma_document_rep
 with primary at CPDB1.cpscan
-with primary table named dbo.'tttl_ma_shipment'
-with replicate table named DBA.tttl_ma_shipment
+with primary table named dbo.'tttl_ma_document'
+with replicate table named DBA.tttl_ma_document
 (
 shipper_num  	char(8) ,
 	manifest_num char(7) ,

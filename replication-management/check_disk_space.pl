@@ -9,7 +9,7 @@
 ######################################################################################
 # Logging into RepAgent
   $sqlError = `. /opt/sybase/SYBASE.sh
-isql -Usa -P -s\\| -w1000 -e <<EOF 2>&1
+isql -Usa -Ps9b2s3 -s\\| -w1000 -e <<EOF 2>&1
 admin disk_space
 go    
 exit   

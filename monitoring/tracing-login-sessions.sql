@@ -1,7 +1,6 @@
 create or replace procedure ltrigg as
 declare @filepath varchar(100)
-select @filepath="/home/sybase/db_backups/trace/trace_for_spid_" +
-convert(varchar(10),@@spid) + "_user_" + suser_name() + "_at_" +
+select @filepath="/opt/sap/db_backups/trace/trace_for_user_" + suser_name() + "_at_" +
 convert(varchar(10),getdate(),5) + "_" +
 convert(varchar(10),getdate(),8) + ".txt"
 set tracefile @filepath
@@ -16,7 +15,7 @@ grant execute on ltrigg to trace_role
 go
 
 declare @login varchar(50)
-select @login="rafael_leandro"
+select @login="webpool_ussws"
 --exec sp_role "grant", trace_role, @login
 --exec sp_modifylogin @login, "add default role", "trace_role"
 exec sp_modifylogin @login, "defdb", master

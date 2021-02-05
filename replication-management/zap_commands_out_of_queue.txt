@@ -1,0 +1,92 @@
+sp_stop_rep_agent rev_hist  --stop the rep agent on the primary database
+go
+
+alter replication definition CPDB1_iq_cp_svb_outstanding_rep alter columns with manifest_num char(7) map to char(8) --change the replication definition on rep server
+go
+
+sp_start_rep_agent rev_hist --start the rep agent on the primary database
+go
+
+The BEGIN TRAN command of this transaction should be located right after the Next Read position shown for this inbound queue in the 'admin who, sqm' output.
+admin who,sqm,CPDB1,rev_hist
+
+sysadmin dump_file, 'srsdump.dmp' --Specify an alternative log file for use when dumping a SRS stable queue.
+sysadmin dump_queue, 225, 1, -1, 1, -1 
+sysadmin dump_file --Reset the current dump file to the default
+
+In the queue dump file, find a transaction with INSERT or UPDATE on the table reported in the error where the column reported in the error is set to the value reported in the error.  
+For example, you find a transaction that has an INSERT statement which adds a row to the table mytable and provides the value of '123456789012345678901' for the column mycol.
+Note the lqid value of the BEGIN TRANSACTION command for this transaction. For example, it is lqid=77584:59:0.
+
+Start SRS in the stand-alone mode using the -M option in the RUN file.
+sysadmin sqm_zap_tran, 225, 1, 221422, 1 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 2 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 3 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 4 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 5 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 6 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 7 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 8 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 9 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 10 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 11 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 12 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 13 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 14 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 15 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 16 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 17 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 18 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 19 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 20 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 21 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 22 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 23 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 24 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 25 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 26 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 27 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 28 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 29 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 30 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 31 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 32 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 33 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 34 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 35 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 36 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 37 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 38 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 39 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 40 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 41 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 42 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 43 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 44 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 45 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 46 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 47 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 48 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 49 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 50 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 51 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 52 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 53 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 54 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 55 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 56 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 57 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 58 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 59 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 60 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 61 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 62 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 63 ,0 ;
+sysadmin sqm_zap_tran, 225, 1, 221422, 64 ,0 ;
+
+
+drop subscription CPDB1_iq_cp_svb_outstanding_sub for CPDB1_iq_cp_svb_outstanding_rep with replicate at CPIQ.rev_hist_iq_conn1 without purge
+
+recreate replication definition with new schema
+recreate subscription
+

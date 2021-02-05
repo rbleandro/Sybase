@@ -52,3 +52,26 @@ then 'dbcc proc_cacherm(R,' + DBName + ',' + ObjectName + ')'
 end, *
 from master..monCachedProcedures
 go
+
+exec dba.dbo.sp_getActiveProcesses @ExcludeSystem =0, @ExcludeDormant =0, @spid = null,@filterHost ='LMSDC1VRATE1',@filterUser =null,@filterProgram =NULL,@filterStatus =NULL,@filterDatabase ='cmf_data_lm'
+go
+dbcc traceon(3604)
+dbcc sqltext(4324)
+dbcc traceoff(3604)
+go
+
+exec sp_showplan 235
+go
+
+--select top 100 SSQLID, show_cached_text(SSQLID)
+select top 100 *
+from master..monCachedStatement
+where show_cached_text(SSQLID) like 'SELECT TOP 1 * FROM points_no_ranges%'
+and DBID=db_id('cmf_data_lm')
+and UseCount>100
+go
+select show_cached_text(1307251351)
+select show_cached_text(1387059046)
+go
+select show_cached_plan_in_xml(1307251351,0)
+go

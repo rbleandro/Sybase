@@ -1,4 +1,6 @@
-create replication definition CPDB2_iq_tttl_ma_eput3_rep
+drop replication definition iq_tttl_ma_eput3_rep
+
+create replication definition iq_tttl_ma_eput3_rep
 with primary at CPDB1.cpscan
 with primary table named dbo.'tttl_ma_eput3'
 with replicate table named DBA.tttl_ma_eput3

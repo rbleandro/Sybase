@@ -12,6 +12,7 @@ sysadmin log_first_tran, CPDB4, svp_lm
 sysadmin log_first_tran, CPDB2, svp_lm
 sysadmin log_first_tran, CPDB4, rev_hist_lm
 sysadmin log_first_tran, CPDB2, rev_hist_lm
+sysadmin log_first_tran, CPDB2, collectpickup_lm
 sysadmin log_first_tran, CPIQ,svp_cp_iq_conn1
 
 alter connection to CPDB4.svp_cp set error class canpar_error_class
@@ -36,6 +37,8 @@ resume connection to CPDB1.svp_cp execute transaction
 resume connection to CPDB4.svp_cp execute transaction
 resume connection to CPDB4.cmf_data_lm 
 resume connection to CPDB2.cmf_data_lm execute transaction
+resume connection to CPDB2.rev_hist_lm execute transaction
+resume connection to CPDB2.rev_hist execute transaction
 
 resume connection to CPDB4.canada_post skip transaction
 resume connection to CPDB4.cpscan skip transaction
@@ -83,6 +86,12 @@ admin who,sqm, CPDB2, canada_post
 go | egrep "First|Last"
 sv
 admin who,sqm, CPDB2, cpscan
+go | egrep "First|Last"
+
+admin who,sqm, CPDB2, cmf_data
+go | egrep "First|Last"
+
+admin who,sqm, CPIQ, rev_hist_iq_conn1
 go | egrep "First|Last"
 
 sqm 4,canada_post --snippet to get the stable queue message performance (use it in sqsh)

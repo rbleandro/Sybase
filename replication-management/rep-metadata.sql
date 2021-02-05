@@ -124,6 +124,7 @@ rs_helprep --info on table replication definitions
 rs_helpsub --info on table subscriptions
 rs_helpuser
 rs_helperror 529 -- information about error action for a specific error
+rs_helpdb -- overview on connections' properties, including error classes used
 
 --ADMIN COMMANDS
 admin config
@@ -193,6 +194,13 @@ go | egrep "dsi_bulk_copy|dsi_compile_enable|dist_sqt_max_cache_size|error"
 admin config,"connection",CPDB1,scan_compliance
 go | egrep "dsi_bulk_copy|dsi_compile_enable|dist_sqt_max_cache_size|error"
 
+
+admin config,"connection",CPIQ,rev_hist_iq_conn1
+go | egrep "dsi_bulk_copy|dsi_compile_enable|dsi_cmd_batch_size|dsi_compile_max_cmds|dsi_cdb_max_size|dist_sqt_max_cache_size|error"
+
+admin config,"connection",CPIQ,rev_hist_lm_iq_conn1
+go | egrep "dsi_bulk_copy|dsi_compile_enable|dsi_cmd_batch_size|dsi_compile_max_cmds|dsi_cdb_max_size|dist_sqt_max_cache_size|error"
+
 admin who_is_down
 go | grep "svp_lm"
 
@@ -211,15 +219,25 @@ go | egrep "sq|Used";
 admin who,sqt
 go | egrep "sort_data|Closed"
 
+admin who,sqt
+go | egrep "rev_hist|Closed"
+
 --CONFINGURE ERROR ACTIONS FOR ERRORS IN REPLICATION
 http://infocenter.sybase.com/help/index.jsp?topic=/com.sybase.infocenter.dc35920.1571200/doc/html/jer1346925054962.html
 http://infocenter.sybase.com/help/index.jsp?topic=/com.sybase.infocenter.dc32410.1570/doc/html/san1273714385572.html
 
-create replication server error class svp_cp_error_class set template to rs_repserver_error_class
-alter connection CPDB4.svp_cp set error class canpar_error_class
+create error class svp_cp_error_class set template to rs_sqlserver_error_class
+drop error class iq_error_class
+create error class iq_error_class set template to rs_iq_error_class
+
+alter connection to CPDB4.svp_cp set error class canpar_error_class
+alter connection to CPIQ.cmf_data_lm_iq_conn1 set error class iq_error_class
 assign action retry_stop for canpar_error_class to 529
 assign action retry_stop for canpar_error_class to 3621
 assign action log for canpar_error_class to 17260
+assign action warn for iq_error_class to -1002003
+assign action stop_replication for iq_error_class to 1002003
+assign action stop_replication for iq_error_class to -1002003
 
 ignore - Assume that the command succeeded and that there is no error or warning condition to process. This action can be used for a return status that indicates successful execution.
 warn - Log a warning message, but do not roll back the transaction or interrupt execution.

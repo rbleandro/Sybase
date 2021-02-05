@@ -2,7 +2,7 @@ declare spidcurs cursor for
 select name from master..sysdatabases where status2 !=-32768 and name not like 'tempdb%' and name not in ('sybsecurity','dba')
 go
 Declare @dbname varchar(50),@str0 varchar(4000),@object varchar(1000)
-set @object='tempdb1'
+set @object='databatch_processed'
 set @str0=""
 open spidcurs
 fetch next from spidcurs into @dbname
